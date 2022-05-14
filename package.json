@@ -1,6 +1,6 @@
 {
   "name": "fastify-modular-request",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "main": "./cjs/index.js",
   "module": "./esm/index.js",
   "exports": {
@@ -9,6 +9,14 @@
       "require": "./cjs/index.js"
     }
   },
+  "files": [
+    "cjs/**/*.js",
+    "cjs/**/*.d.ts",
+    "cjs/package.json",
+    "esm/**/*.js",
+    "esm/**/*.d.ts",
+    "esm/package.json"
+  ],
   "scripts": {
     "build": "npm run \"build:cjs\" & npm run \"build:esm\"",
     "build:cjs": "rimraf \"cjs/**/*.{js,js.map,d.ts,d.ts.map}\" && tsc -p ./cjs/tsconfig.json",
