@@ -1,0 +1,15 @@
+node_modules
+
+cjs/**/*.d.ts.map
+cjs/**/*.d.ts
+cjs/**/*.js.map
+cjs/**/*.js
+
+esm/**/*.d.ts.map
+esm/**/*.d.ts
+esm/**/*.js.map
+esm/**/*.js
+
+.nyc_output
+
+.pnpm-debug.log
