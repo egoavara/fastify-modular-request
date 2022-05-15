@@ -46,7 +46,9 @@ export async function requestHTTPBody(
     // setup path
     const path = req.path.resolve(api.path, api.params, args.params)
     // setup headers
-    const headers: Record<string, string | number | boolean> = {}
+    const headers: Record<string, string | number | boolean> = {
+        'content-type': 'application/json'
+    }
     jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
 
     return axios.request({
@@ -54,7 +56,7 @@ export async function requestHTTPBody(
         method: api.method,
         url: `${host}${path}`,
         params: pito.wrap(api.query, args.query ?? {}),
-        ...(args.body !== undefined ? { data: pito.wrap(api.body, args.body), } : {}),
+        ...(args.body !== undefined ? { data: pito.wrap(api.body, args.body), } : { data: {} }),
         headers: headers,
         paramsSerializer: QueryString.stringify,
     }).then(v => {
@@ -63,7 +65,5 @@ export async function requestHTTPBody(
             throw new Error(`unexpected not json result, ${contentType}, response : ${v}`)
         }
         return v.data
-    }).catch(v=>{
-        
     })
 }
