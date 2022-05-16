@@ -3,6 +3,7 @@ import axios, { AxiosRequestConfig } from "axios"
 import { Multipart } from "fastify-modular-route"
 import FormData from "form-data"
 import QueryString from "qs"
+import { GenericState } from "./generic-state.js"
 import { MultipartArgs, Requester } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
 
@@ -17,7 +18,7 @@ export type MultipartFile = {
 export async function requestMultipart(
     req: Requester,
     api: Multipart<string, string, any, any, any, any>,
-    args: MultipartArgs<any, any, any>,
+    args: MultipartArgs<GenericState, any, any, any>,
 
 ): Promise<any> {
     // setup host

@@ -1,6 +1,7 @@
 import EventSource from "eventsource"
 import { SSE } from "fastify-modular-route"
 import qs from "qs"
+import { GenericState } from "./generic-state.js"
 import { Requester, SSEArgs } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
 
@@ -17,7 +18,7 @@ export type SSEManager<Packet> = {
 export async function requestSSE(
     req: Requester,
     api: SSE<string, string, any, any, any, any>,
-    args: SSEArgs<any, any, any>,
+    args: SSEArgs<GenericState, any, any, any>,
 ): Promise<SSEManager<any>> {
     // setup host
     const host = req.host.resolve(api)

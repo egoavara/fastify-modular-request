@@ -1,8 +1,9 @@
-import axios, {
+import {
     AxiosRequestConfig
 } from "axios"
 import { HTTPBody, HTTPNoBody, InferPrefix, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "fastify-modular-route"
 import { pito } from "pito"
+import { GenericState } from "./generic-state.js"
 import { KnownPresetSnippet } from "./known-presets.js"
 import { ManagerHost } from "./manager-host.js"
 import { ManagerPath } from "./manager-path.js"
@@ -10,51 +11,51 @@ import { requestHTTPBody, requestHTTPNoBody } from "./request-http.js"
 import { MultipartFile, requestMultipart } from "./request-multipart.js"
 import { requestSSE, SSEManager } from "./request-sse.js"
 import { requestWS, WSManager } from "./request-ws.js"
-import { BodySnippet, IsAllOptional, IsAny, IsEmpty, IsOverlap, ParamsSnippet, QuerySnippet } from "./utils.js"
+import { BodySnippet, IsOverlap, ParamsSnippet, QuerySnippet } from "./utils.js"
 
 
 
-export type HTTPNoBodyArgs<Params, Query, Preset> =
+export type HTTPNoBodyArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
-    & KnownPresetSnippet<Preset>
+    & KnownPresetSnippet<Preset, State>
     & { axios?: AxiosRequestConfig }
-export type HTTPBodyArgs<Params, Query, Body, Preset> =
+export type HTTPBodyArgs<State extends GenericState, Params, Query, Body, Preset> =
     & BodySnippet<Body>
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
-    & KnownPresetSnippet<Preset>
+    & KnownPresetSnippet<Preset, State>
     & { axios?: AxiosRequestConfig }
 
-export type MultipartArgs<Params, Query, Preset> =
+export type MultipartArgs<State extends GenericState, Params, Query, Preset> =
     & { files: MultipartFile[] }
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
-    & KnownPresetSnippet<Preset>
+    & KnownPresetSnippet<Preset, State>
     & { axios?: AxiosRequestConfig }
 
 
-export type SSEArgs<Params, Query, Preset> =
+export type SSEArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
-    & KnownPresetSnippet<Preset>
+    & KnownPresetSnippet<Preset, State>
 
-export type WSArgs<Params, Query, Preset> =
+export type WSArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
-    & KnownPresetSnippet<Preset>
+    & KnownPresetSnippet<Preset, State>
 
-export type RequestArgs<API extends Route> =
+export type RequestArgs<State extends GenericState, API extends Route> =
     API extends HTTPBody<any, MethodHTTPBody, any, infer Params, infer Query, infer Body, any, infer Preset>
-    ? HTTPBodyArgs<pito.Type<Params>, pito.Type<Query>, pito.Type<Body>, Preset>
+    ? HTTPBodyArgs<State, pito.Type<Params>, pito.Type<Query>, pito.Type<Body>, Preset>
     : API extends HTTPNoBody<any, MethodHTTPNoBody, any, infer Params, infer Query, any, infer Preset>
-    ? HTTPNoBodyArgs<pito.Type<Params>, pito.Type<Query>, Preset>
+    ? HTTPNoBodyArgs<State, pito.Type<Params>, pito.Type<Query>, Preset>
     : API extends Multipart<any, any, infer Params, infer Query, any, infer Preset>
-    ? MultipartArgs<pito.Type<Params>, pito.Type<Query>, Preset>
+    ? MultipartArgs<State, pito.Type<Params>, pito.Type<Query>, Preset>
     : API extends SSE<any, any, infer Params, infer Query, any, infer Preset>
-    ? SSEArgs<pito.Type<Params>, pito.Type<Query>, Preset>
+    ? SSEArgs<State, pito.Type<Params>, pito.Type<Query>, Preset>
     : API extends WS<any, any, infer Params, infer Query, any, any, any, any, infer Preset>
-    ? WSArgs<pito.Type<Params>, pito.Type<Query>, Preset>
+    ? WSArgs<State, pito.Type<Params>, pito.Type<Query>, Preset>
     : never
 
 
@@ -94,7 +95,7 @@ export class Requester {
     }
 
     /// ==========
-    async request<API extends Route>(api: API, others: RequestArgs<API>): Promise<RequestRet<API>> {
+    async request<API extends Route>(api: API, others: RequestArgs<{ ManagedAuth: false }, API>): Promise<RequestRet<API>> {
         switch (api.method) {
             case 'HEAD':
             case 'GET':
@@ -115,7 +116,8 @@ export class Requester {
                 throw new Error(`unimplemented method = '${api.method}'`)
         }
     }
-    jwtBearer(onTokenNeed: (req: Requester) => Promise<string>, onTokenExpired: (req: Requester) => Promise<string>): JWTManagedRequester {
+
+    jwtManaged(onTokenNeed: (req: Requester) => Promise<string>, onTokenExpired: (req: Requester) => Promise<string>): JWTManagedRequester {
         return new JWTManagedRequester(this, onTokenNeed, onTokenExpired)
     }
 }
@@ -129,25 +131,15 @@ export class JWTManagedRequester {
         this.onTokenNeed = onTokenNeed
         this.onTokenExpired = onTokenExpired
     }
-    //     /// ==========
-    //     static create(req : Requester): JWTManagedRequester {
-    //         return new Requester(
-    //             ManagerHost.create(defaultHost, options?.hostMapping),
-    //             ManagerPath.create(),
-    //         )
-    //     }
-
-
     /// ==========
     async request<API extends Route>(
         api: API,
-        others: IsOverlap<'jwt-bearer', InferPrefix<API>> extends true ? Omit<RequestArgs<API>, 'auth'> : RequestArgs<API>
+        others: RequestArgs<{ ManagedAuth: true }, API>
     ): Promise<RequestRet<API>> {
         if (api.presets.includes('jwt-bearer')) {
-            // @ts-expect-error
-            others['auth'] = await this.onRequestAuth(this.req)
+            others['auth'] = await this.onTokenNeed(this.req)
         }
-        return this.req.request(api, others as RequestArgs<API>).catch(async err => {
+        return this.req.request(api, others as unknown as RequestArgs<{ ManagedAuth: false }, API>).catch(async err => {
             // this.onTokenExpired(this.req)
             throw new Error(`todo`)
         })

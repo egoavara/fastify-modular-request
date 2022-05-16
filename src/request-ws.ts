@@ -3,6 +3,7 @@ import WebSocket from "isomorphic-ws"
 import { pito } from "pito"
 import QueryString from "qs"
 import { v4 } from "uuid"
+import { GenericState } from "./generic-state.js"
 import { RequestArgs, Requester, WSArgs } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
 
@@ -21,7 +22,7 @@ export async function requestWS<
 >(
     req: Requester,
     api: WsAPI,
-    args: RequestArgs<WsAPI>,
+    args: RequestArgs<GenericState, WsAPI>,
 ): Promise<WSManager<any, any, any, any>> {
     // setup host
     const host = req.host.resolve(api)

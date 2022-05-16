@@ -6,11 +6,12 @@ import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody } from "fastify-
 import { HTTPBodyArgs, HTTPNoBodyArgs, Requester } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
 import QueryString from "qs"
+import { GenericState } from "./generic-state.js"
 
 export async function requestHTTPNoBody(
     req: Requester,
     api: HTTPNoBody<string, MethodHTTPNoBody, string, any, any, any, any>,
-    args: HTTPNoBodyArgs<any, any, any>,
+    args: HTTPNoBodyArgs<GenericState, any, any, any>,
 ): Promise<any> {
     // setup host
     const host = req.host.resolve(api)
@@ -39,7 +40,7 @@ export async function requestHTTPNoBody(
 export async function requestHTTPBody(
     req: Requester,
     api: HTTPBody<string, MethodHTTPBody, string, any, any, any, any, any>,
-    args: HTTPBodyArgs<any, any, any, any>,
+    args: HTTPBodyArgs<GenericState, any, any, any, any>,
 ): Promise<any> {
     // setup host
     const host = req.host.resolve(api)
@@ -50,7 +51,7 @@ export async function requestHTTPBody(
         'content-type': 'application/json'
     }
     jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
-
+    
     return axios.request({
         ...(args.axios ?? {}),
         method: api.method,
