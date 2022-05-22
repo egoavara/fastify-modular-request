@@ -8,7 +8,7 @@ specifiers:
   '@types/uuid': ^8.3.4
   '@types/ws': ^8.5.3
   axios: ^0.27.2
-  eventsource: ^2.0.2
+  event-source-polyfill: ^1.0.26
   fastify: ^3.29.0
   fastify-modular: 0.3.4
   fastify-modular-route: 0.3.3
@@ -25,7 +25,7 @@ specifiers:
 
 dependencies:
   axios: 0.27.2
-  eventsource: 2.0.2
+  event-source-polyfill: 1.0.26
   fastify-modular-route: 0.3.3
   form-data: 4.0.0
   isomorphic-ws: 4.0.1_ws@8.6.0
@@ -877,14 +877,13 @@ packages:
     engines: {node: '>= 0.6'}
     dev: true
 
+  /event-source-polyfill/1.0.26:
+    resolution: {integrity: sha512-IwDLs9fUTcGAyacHBeS53T8wcEkDyDn0UP4tfQqJ4wQP8AyH0mszuQf2ULTylnpI0sMquzJ4usrNV7+uztwI9A==}
+    dev: false
+
   /events-to-array/1.1.2:
     resolution: {integrity: sha1-LUH1Y+H+QA7Uli/hpNXGp1Od9/Y=}
     dev: true
-
-  /eventsource/2.0.2:
-    resolution: {integrity: sha512-IzUmBGPR3+oUG9dUeXynyNmf91/3zUSJg1lCktzKw47OXuhco54U3r9B7O4XX+Rb1Itm9OZ2b0RkTs10bICOxA==}
-    engines: {node: '>=12.0.0'}
-    dev: false
 
   /fast-decode-uri-component/1.0.1:
     resolution: {integrity: sha512-WKgKWg5eUxvRZGwW8FvfbaH7AXSh2cL+3j5fMGzUMCxWBJ3dV3a7Wz8y2f/uQ0e3B6WmodD3oS54jTQ9HVTIIg==}
@@ -941,7 +940,6 @@ packages:
     resolution: {integrity: sha512-KCDb7bkvyzwQ2UcxzMLalMqwamQu9C71fQsRilnAVahhD/Y/0Vzc20ZPyYhOygM154/T76wDpB0MhNXZQ2Lm1Q==}
     dependencies:
       pito: 0.1.0
-    dev: false
 
   /fastify-modular/0.3.4_hhrpvd5jghejbfgriwn2u5kecm:
     resolution: {integrity: sha512-qmNFUayTWArxDqRwhS/ozjrB1UQ2z86sjE82i1sXjPYQmipspHvFdZg3t/HezLIXD+nxGmJ71TYj/o1CS8pLzA==}
