@@ -1,6 +1,7 @@
 lockfileVersion: 5.4
 
 specifiers:
+  '@types/event-source-polyfill': ^1.0.0
   '@types/eventsource': ^1.1.8
   '@types/node': ^17.0.33
   '@types/qs': ^6.9.7
@@ -24,6 +25,7 @@ specifiers:
   ws: ^8.6.0
 
 dependencies:
+  '@types/event-source-polyfill': 1.0.0
   axios: 0.27.2
   event-source-polyfill: 1.0.26
   fastify-modular-route: 0.3.3
@@ -388,6 +390,10 @@ packages:
   /@tsconfig/node16/1.0.2:
     resolution: {integrity: sha512-eZxlbI8GZscaGS7kkc/trHTT5xgrjH3/1n2JDwusC9iahPKWMRvRjJSAN5mCXviuTGQ/lHnhvv8Q1YTpnfz9gA==}
     dev: true
+
+  /@types/event-source-polyfill/1.0.0:
+    resolution: {integrity: sha512-b8O8/rg7NIW0iJ8i9MNDBZqPljHA+b7AjC3QFqH3dSyW6vgrl3oBgyIv5dw2fibh5enHHDkkPZG5PHza7U4NRw==}
+    dev: false
 
   /@types/eventsource/1.1.8:
     resolution: {integrity: sha512-fJQNt9LijJCZwYvM6O30uLzdpAK9zs52Uc9iUW9M2Zsg0HQM6DLf6QysjC/wuFX+0798B8AppVMvgdO6IftPKQ==}

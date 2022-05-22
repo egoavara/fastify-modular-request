@@ -1,4 +1,4 @@
-import EventSource from "eventsource"
+import { EventSourcePolyfill } from "event-source-polyfill"
 import { SSE } from "fastify-modular-route"
 import qs from "qs"
 import { GenericState } from "./generic-state.js"
@@ -31,7 +31,7 @@ export async function requestSSE(
     const url = new URL(`${host}${path}`)
     url.search = qs.stringify(args.query)
     // setup eventsource
-    const source = new EventSource(url.toString(), { headers })
+    const source = new EventSourcePolyfill(url.toString(), { headers: Object.fromEntries(Object.entries(headers).map(([k, v])=>([k, v.toString()]))) })
     // eventsource to SSEManager
     let unlock: ((data: any[]) => void) | undefined = undefined
     let buffer: any[] = []
@@ -73,7 +73,7 @@ export async function requestSSE(
         while (!loopDone) {
 
             yield* await blocker
-            if(loopDone){
+            if (loopDone) {
                 break
             }
             blocker = new Promise<any[]>(resolve => unlock = resolve)
@@ -81,7 +81,7 @@ export async function requestSSE(
         if (err !== undefined) {
             throw err
         }
-        yield*buffer
+        yield* buffer
         return
     })()
     // 
