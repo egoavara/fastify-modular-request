@@ -1,5 +1,5 @@
 
-import axios, { AxiosRequestConfig } from "axios"
+import axios from "axios"
 import { Multipart } from "fastify-modular-route"
 import FormData from "form-data"
 import QueryString from "qs"

@@ -4,8 +4,6 @@
     "moduleResolution": "Node",
     "target": "ESNext",
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "removeComments": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
