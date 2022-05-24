@@ -2,54 +2,65 @@ import { Route } from "fastify-modular-route"
 
 export class ManagerHost {
     fallback: string
-    knownDomain: Record<string, string>
-    pathPattern: [RegExp, string][]
+    domainHost: Record<string, string>
+    patternHost: [RegExp, string][]
 
     private constructor(fallback: string, knownDomain: Record<string, string>, pathPattern: [RegExp, string][]) {
         this.fallback = fallback
-        this.knownDomain = knownDomain
-        this.pathPattern = pathPattern
+        this.domainHost = knownDomain
+        this.patternHost = pathPattern
     }
     static create(fallback: string, options?: Record<string, string>) {
-        const PATH_PREFIX = "path:"
-        const REDIRECT_PREFIX = "@"
-        const knownDomain: Record<string, string> = {}
-        const pathPattern: [RegExp, string][] = []
+        const PATTERN_PREFIX = "pattern:"
+        const REDIRECT_PREFIX = '#'
+        const knownHost: Record<string, string> = {}
+        const pathHost: [RegExp, string][] = []
         for (const [k, v] of Object.entries(options ?? {})) {
-            if (k.startsWith(PATH_PREFIX)) {
-                pathPattern.push([new RegExp(k.substring(PATH_PREFIX.length)), v])
+            if (k.startsWith(PATTERN_PREFIX)) {
+                pathHost.push([new RegExp(k.substring(PATTERN_PREFIX.length)), v])
             } else {
-                knownDomain[k] = v
+                knownHost[k] = v
             }
         }
-        const resolveEachDomain = (domain: string): string => {
-            if (!(domain in knownDomain)) {
-                throw new Error(`unknown domain '${domain}'`)
+        const resolver = (name: string, limit: number): string => {
+            if (limit > 10) {
+                throw new Error(`maximum recursive redirect reached`)
             }
-            if (knownDomain[domain].startsWith(REDIRECT_PREFIX)) {
-                return resolveEachDomain(knownDomain[domain].substring(REDIRECT_PREFIX.length))
+            if (!(name in knownHost)) {
+                throw new Error(`unknown name ${name}`)
             }
-            return knownDomain[domain]
+            const resolved = knownHost[name]
+            if (resolved.startsWith(REDIRECT_PREFIX)) {
+                const nextName = resolved.substring(REDIRECT_PREFIX.length)
+                if (name === nextName) {
+                    throw new Error(`infinite recursive redirect ${name}`)
+                }
+                return resolver(nextName, limit + 1)
+            }
+            return resolved
         }
-
-        const resolvedDomain = Object.fromEntries(Object.keys(knownDomain).map(v => [v, resolveEachDomain(v)]))
-        const resolvedPathPattern = pathPattern.map(([re, domain]) => {
-            if (domain.startsWith(REDIRECT_PREFIX)) {
-                return [re, resolveEachDomain(domain.substring(REDIRECT_PREFIX.length))] as [RegExp, string]
+        const resolvedHost = Object.fromEntries(
+            Object.keys(knownHost).map(k => {
+                return [k, resolver(k, 0)]
+            })
+        )
+        const resolvedPatternHost = pathHost.map(([pattern, host]) => {
+            if (host.startsWith(REDIRECT_PREFIX)) {
+                return [pattern, resolver(host.substring(REDIRECT_PREFIX.length), 0)] as [RegExp, string]
             }
-            return [re, domain] as [RegExp, string]
+            return [pattern, host] as [RegExp, string]
         })
-        return new ManagerHost(fallback, resolvedDomain, resolvedPathPattern)
+        return new ManagerHost(fallback, resolvedHost, resolvedPatternHost)
     }
 
     resolve(api: Route) {
-        if (api.domain in this.knownDomain) {
-            return this.knownDomain[api.domain]!!
-        }
-        for (const patt of this.pathPattern) {
-            if (api.path.match(patt[0]) === null) {
+        for (const patt of this.patternHost) {
+            if (api.path.match(patt[0]) !== null) {
                 return patt[1]
             }
+        }
+        if (api.domain in this.domainHost) {
+            return this.domainHost[api.domain]!!
         }
         return this.fallback
     }

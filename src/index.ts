@@ -139,9 +139,11 @@ export class JWTManagedRequester {
         if (api.presets.includes('jwt-bearer')) {
             others['auth'] = await this.onTokenNeed(this.req)
         }
-        return this.req.request(api, others as unknown as RequestArgs<{ ManagedAuth: false }, API>).catch(async err => {
-            // this.onTokenExpired(this.req)
-            throw new Error(`todo`)
-        })
+        return this.req.request(api, others as unknown as RequestArgs<{ ManagedAuth: false }, API>)
+            .catch(async err => {
+                // this.onTokenExpired(this.req)
+                console.log(err)
+                throw new Error(`todo`)
+            })
     }
 }

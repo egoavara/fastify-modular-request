@@ -1,6 +1,6 @@
 {
   "name": "fastify-modular-request",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "main": "./cjs/index.js",
   "module": "./esm/index.js",
   "exports": {
@@ -24,7 +24,7 @@
     "watch": "npm run \"watch:cjs\" & npm run \"watch:esm\"",
     "watch:cjs": "rimraf \"cjs/**/*.{js,js.map,d.ts,d.ts.map}\" && tsc --watch -p ./cjs/tsconfig.json",
     "watch:esm": "rimraf \"esm/**/*.{js,js.map,d.ts,d.ts.map}\" && tsc --watch -p ./esm/tsconfig.json",
-    "test": "tap --ts ./test/04-auth.ts",
+    "test": "tap --ts ./test",
     "prepack": "npm run build"
   },
   "keywords": [
@@ -37,7 +37,7 @@
   "dependencies": {
     "@types/event-source-polyfill": "^1.0.0",
     "axios": "^0.27.2",
-    "event-source-polyfill": "^1.0.26",
+    "both-sse": "^0.1.1",
     "fastify-modular-route": "0.3.3",
     "form-data": "^4.0.0",
     "isomorphic-ws": "^4.0.1",

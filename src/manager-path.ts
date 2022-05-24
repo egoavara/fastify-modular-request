@@ -13,7 +13,7 @@ export class ManagerPath{
             if (!(k in params)) {
                 throw new Error(`url parameter style key '${k}' not found`)
             }
-            result = path.replaceAll(`:${k}`, `${pito.wrap(v, params[k])}`)
+            result = result.replaceAll(`:${k}`, `${pito.wrap(v, params[k])}`)
         }
         if(!result.startsWith("/")){
             return "/" + result
