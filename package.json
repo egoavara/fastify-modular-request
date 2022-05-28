@@ -38,7 +38,6 @@
     "@types/event-source-polyfill": "^1.0.0",
     "axios": "^0.27.2",
     "both-sse": "^0.1.1",
-    "fastify-modular-route": "0.4.0",
     "form-data": "^4.0.0",
     "isomorphic-ws": "^4.0.1",
     "qs": "^6.10.3",
@@ -52,7 +51,8 @@
     "@types/uuid": "^8.3.4",
     "@types/ws": "^8.5.3",
     "fastify": "^3.29.0",
-    "fastify-modular": "0.3.4",
+    "fastify-modular": "^0.4.0",
+    "fastify-modular-route": "^0.4.0",
     "pito": "^0.1.0",
     "rimraf": "^3.0.2",
     "tap": "^16.2.0",
@@ -61,5 +61,8 @@
   },
   "optionalDependencies": {
     "ws": "^8.6.0"
+  },
+  "peerDependencies": {
+    "fastify-modular-route": "^0.4.0"
   }
 }
