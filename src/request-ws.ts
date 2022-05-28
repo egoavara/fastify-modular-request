@@ -86,7 +86,7 @@ export async function requestWS<
                                     id,
                                     method: key as string,
                                     args: args.map((v, i) => {
-                                        return pito.wrap(api.request[i].args[i], v)
+                                        return pito.wrap(api.request[key].args[i], v)
                                     }),
                                 }))
                             })
@@ -125,7 +125,7 @@ export async function requestWS<
                                     id: data.id,
                                     method : data.mehtod,
                                     result: on.res[data.method](...data.args.map((v:any, i:number)=>{
-                                        return pito.unwrap(api.request[i].args[i], v)
+                                        return pito.unwrap(api.request[data.method].args[i], v)
                                     }))
                                 }))
                                 break
