@@ -38,7 +38,7 @@
     "@types/event-source-polyfill": "^1.0.0",
     "axios": "^0.27.2",
     "both-sse": "^0.1.1",
-    "fastify-modular-route": "0.3.3",
+    "fastify-modular-route": "0.4.0",
     "form-data": "^4.0.0",
     "isomorphic-ws": "^4.0.1",
     "qs": "^6.10.3",
