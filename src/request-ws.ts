@@ -120,14 +120,16 @@ export async function requestWS<
                                 if (!(data.method in on.res)) {
                                     throw new Error(`'${data.method}'를 서버에서 요청했지만 처리할 수 없습니다.`)
                                 }
-                                ws.send(JSON.stringify({
-                                    type: 'res',
-                                    id: data.id,
-                                    method : data.mehtod,
-                                    result: on.res[data.method](...data.args.map((v:any, i:number)=>{
-                                        return pito.unwrap(api.request[data.method].args[i], v)
+                                on.res[data.method](...data.args.map((v: any, i: number) => {
+                                    return pito.unwrap(api.request[data.method].args[i], v)
+                                })).then(result => {
+                                    ws.send(JSON.stringify({
+                                        type: 'res',
+                                        id: data.id,
+                                        method: data.mehtod,
+                                        result
                                     }))
-                                }))
+                                })
                                 break
                             case "res":
                                 if (!(data.id in on.req)) {
