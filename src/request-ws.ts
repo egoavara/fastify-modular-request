@@ -86,7 +86,7 @@ export async function requestWS<
                                     id,
                                     method: key as string,
                                     args: args.map((v, i) => {
-                                        return pito.wrap(api.request[key].args[i], v)
+                                        return pito.wrap(api.response[key].args[i], v)
                                     }),
                                 }))
                             })
