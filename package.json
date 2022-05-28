@@ -1,6 +1,6 @@
 {
   "name": "fastify-modular-request",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "main": "./cjs/index.js",
   "module": "./esm/index.js",
   "exports": {
@@ -24,7 +24,7 @@
     "watch": "npm run \"watch:cjs\" & npm run \"watch:esm\"",
     "watch:cjs": "rimraf \"cjs/**/*.{js,js.map,d.ts,d.ts.map}\" && tsc --watch -p ./cjs/tsconfig.json",
     "watch:esm": "rimraf \"esm/**/*.{js,js.map,d.ts,d.ts.map}\" && tsc --watch -p ./esm/tsconfig.json",
-    "test": "tap --ts ./test",
+    "test": "tap --ts ./test/03-ws.ts",
     "prepack": "npm run build"
   },
   "keywords": [

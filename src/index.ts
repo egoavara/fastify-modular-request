@@ -1,7 +1,7 @@
 import {
     AxiosRequestConfig
 } from "axios"
-import { HTTPBody, HTTPNoBody, InferPrefix, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "fastify-modular-route"
+import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "fastify-modular-route"
 import { pito } from "pito"
 import { GenericState } from "./generic-state.js"
 import { KnownPresetSnippet } from "./known-presets.js"
@@ -11,7 +11,7 @@ import { requestHTTPBody, requestHTTPNoBody } from "./request-http.js"
 import { MultipartFile, requestMultipart } from "./request-multipart.js"
 import { requestSSE, SSEManager } from "./request-sse.js"
 import { requestWS, WSManager } from "./request-ws.js"
-import { BodySnippet, IsOverlap, ParamsSnippet, QuerySnippet } from "./utils.js"
+import { BodySnippet, ParamsSnippet, QuerySnippet } from "./utils.js"
 
 
 
@@ -20,6 +20,7 @@ export type HTTPNoBodyArgs<State extends GenericState, Params, Query, Preset> =
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
     & { axios?: AxiosRequestConfig }
+    
 export type HTTPBodyArgs<State extends GenericState, Params, Query, Body, Preset> =
     & BodySnippet<Body>
     & ParamsSnippet<Params>
@@ -34,8 +35,11 @@ export type MultipartArgs<State extends GenericState, Params, Query, Preset> =
     & KnownPresetSnippet<Preset, State>
     & { axios?: AxiosRequestConfig }
 
-
+export type SSEOption = {
+    timeout?: number // ms
+}
 export type SSEArgs<State extends GenericState, Params, Query, Preset> =
+    & { sse?: SSEOption }
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>

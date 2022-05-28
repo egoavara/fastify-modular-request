@@ -5,13 +5,13 @@ export type IsAny<O> =
     ? true
     : false
 export type IsEmpty<O> = [keyof O] extends [never] ? true : false
-export type IsAllOptional<O> = O[keyof O] & undefined extends never ? false : true
+export type IsAnyRequired<O> = true extends ({ [_ in keyof (Required<O> & O)]: O[_] & undefined extends never ? true : false })[keyof O] ? true : false
 
 export type ParamsSnippet<Params> = (
-    IsAny<Params> extends true 
-    ? { params?: Params } 
+    IsAny<Params> extends true
+    ? { params?: Params }
     : (
-        IsEmpty<Params> extends false
+        IsAnyRequired<Params> extends true
         ? { params: Params }
         : { params?: Params }
     )
@@ -22,16 +22,19 @@ export type QuerySnippet<Query> = (
     ? { query?: any }
     : IsEmpty<Query> extends false
     ? (
-        IsAllOptional<Query> extends true
-        ? { query?: Query }
-        : { query: Query }
+        IsAnyRequired<Query> extends true
+        ? { query: Query }
+        : { query?: Query }
     )
     : {}
 )
+
 export type BodySnippet<Body> = (
     IsAny<Body> extends true
     ? { body?: any }
-    : IsEmpty<Body> extends false
-    ? { body: Body }
-    : { body?: Body }
+    : (
+        IsAnyRequired<Body> extends true
+        ? { body: Body }
+        : { body?: Body }
+    )
 )

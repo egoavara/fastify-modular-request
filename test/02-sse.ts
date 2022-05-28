@@ -58,3 +58,10 @@ tap.test('sse', async t => {
         await fastify.close()
     }
 })
+tap.test('timeout', async t => {
+    const PORT = 30201
+    const req = Requester.create(`http://localhost:${PORT}`)
+    t.rejects(async () => {
+        await req.request(SSE("/ping").build(), { sse: { timeout: 1000 } })
+    })
+})

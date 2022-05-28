@@ -14,7 +14,7 @@ export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] 
     onReceive(handler: (data: Recv) => void | Promise<void>): void,
     onResponse<Rs extends keyof Response>(key: Rs, handler: (...args: pito.MapType<Response[Rs]['args']>) => Promise<pito.Type<Response[Rs]['return']>>): void,
     close(): void,
-    untilClose(): Promise<void>,
+    until(): Promise<void>,
 }
 
 export async function requestWS<
@@ -66,6 +66,8 @@ export async function requestWS<
                     ws.send(JSON.stringify({ type: 'header', header: headers }))
                     return
                 case "complete":
+                    // 헤더 셋업
+                    ws.send(JSON.stringify({ type: 'ready' }))
                     // 모든 작업이 완료됨
                     resolve({
                         socket: ws,
@@ -90,7 +92,7 @@ export async function requestWS<
                             on.res[key as string] = handler
                         },
                         close: () => { ws.close() },
-                        untilClose: () => {
+                        until: () => {
                             return new Promise(resolve => {
                                 if (ws.readyState === ws.CLOSED) {
                                     resolve()
