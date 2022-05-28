@@ -71,9 +71,11 @@ export async function requestWS<
                     // 모든 작업이 완료됨
                     resolve({
                         socket: ws,
-                        send: (payload) => { return ws.send(JSON.stringify({ type: 'send', payload })) },
+                        send: (payload) => {
+                            return ws.send(JSON.stringify({ type: 'send', payload: pito.wrap(api.recv, payload) }))
+                        },
                         // 요청 보내기
-                        request: (key, ...arg) => {
+                        request: (key, ...args) => {
                             // uuid기반으로 새 요청 생성
                             const id = v4()
                             return new Promise((resolve, reject) => {
@@ -83,7 +85,9 @@ export async function requestWS<
                                     type: 'req',
                                     id,
                                     method: key as string,
-                                    args: arg,
+                                    args: args.map((v, i) => {
+                                        return pito.wrap(api.request[i].args[i], v)
+                                    }),
                                 }))
                             })
                         },
@@ -106,7 +110,8 @@ export async function requestWS<
                         const data = JSON.parse(payload.data.toString())
                         switch (data.type) {
                             case "send":
-                                const thenIfPromise = on.receive(data.payload)
+
+                                const thenIfPromise = on.receive(pito.unwrap(api.send, data.payload))
                                 if (thenIfPromise instanceof Promise) {
                                     thenIfPromise.then()
                                 }
@@ -116,15 +121,21 @@ export async function requestWS<
                                     throw new Error(`'${data.method}'를 서버에서 요청했지만 처리할 수 없습니다.`)
                                 }
                                 ws.send(JSON.stringify({
-                                    type: 'res', id: data.id, result: on.res[data.method](...
-                                        data.args)
+                                    type: 'res',
+                                    id: data.id,
+                                    method : data.mehtod,
+                                    result: on.res[data.method](...data.args.map((v:any, i:number)=>{
+                                        return pito.unwrap(api.request[i].args[i], v)
+                                    }))
                                 }))
                                 break
                             case "res":
                                 if (!(data.id in on.req)) {
                                     throw new Error(`'${data.id}'를 서버에서 받았지만 알수 없는 응답입니다.`)
                                 }
-                                on.req[data.id].resolve(data.result)
+                                on.req[data.id].resolve(
+                                    pito.unwrap(api.response[data.method].return, data.result)
+                                )
                                 delete on.req[data.id]
                                 break
                         }
