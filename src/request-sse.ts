@@ -43,6 +43,7 @@ export async function requestSSE(
         const source = new EventSource(sseUrl, sseInit)
         // eventsource to SSEManager
         let unlock: ((data: any[]) => void) | undefined = undefined
+        let blocker = new Promise<any[]>(resolve => unlock = resolve)
         let buffer: any[] = []
         let loopDone = false
         let err: any = undefined
@@ -58,7 +59,7 @@ export async function requestSSE(
             }
         }
         // 
-        setTimeout(() => {
+        const timeoutHndl = setTimeout(() => {
             close()
             reject(new TimeoutError(timeout, new Date()))
         }, timeout)
@@ -84,7 +85,6 @@ export async function requestSSE(
         }
         // 
         const iterator = (async function* () {
-            let blocker = new Promise<any[]>(resolve => unlock = resolve)
             while (!loopDone) {
                 yield* await blocker
                 if (loopDone) {
@@ -101,6 +101,7 @@ export async function requestSSE(
         // 
         let blockIterator: any = undefined
         source.onopen = () => {
+            clearTimeout(timeoutHndl)
             resolve({
                 source,
                 [Symbol.asyncIterator]: () => {
