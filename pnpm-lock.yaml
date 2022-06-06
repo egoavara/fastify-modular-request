@@ -10,8 +10,8 @@ specifiers:
   axios: ^0.27.2
   both-sse: ^0.1.1
   fastify: ^3.29.0
-  fastify-modular: 0.4.7
-  fastify-modular-route: ^0.4.4
+  fastify-modular: 0.5.0
+  fastify-modular-route: 0.5.0
   form-data: ^4.0.0
   isomorphic-ws: ^4.0.1
   pito: ^0.1.0
@@ -42,8 +42,8 @@ devDependencies:
   '@types/uuid': 8.3.4
   '@types/ws': 8.5.3
   fastify: 3.29.0
-  fastify-modular: 0.4.7_q2t3aenamctzra2sokcux4vgou
-  fastify-modular-route: 0.4.4
+  fastify-modular: 0.5.0_ujywvjf4cuhfd4k3vac5yl47tu
+  fastify-modular-route: 0.5.0
   pito: 0.1.0
   rimraf: 3.0.2
   tap: 16.2.0_t6pry2ykbqsy6fyy7rbdptl5ta
@@ -929,23 +929,23 @@ packages:
     resolution: {integrity: sha512-dbO/+ny6lX4tt7pvfPMTiHfQVR5igYKFa5BJ2a21TWuOgd2ySp5DYswsEGuMcJZLL3/eJ/MQJ5KNcXyNUvDt8w==}
     dev: true
 
-  /fastify-modular-route/0.4.4:
-    resolution: {integrity: sha512-n4KaqF4CO7C/Qbk9pLzzL7BX5kiem8g33gb5x4vUG2C+SOwSKqNF/jjak7qMfXlf/WNbqJyQkEoiSpO/d4D62Q==}
+  /fastify-modular-route/0.5.0:
+    resolution: {integrity: sha512-NxShaRKkYjeIQRBl2A8IIKN+p/lK7Q1maYysbZeL3JYbK6k6PznCvd7nknWcz8iD2uvB78LfvY23Mnws4l4bXQ==}
     dependencies:
-      pito: 0.1.0
+      pito: 0.1.2
     dev: true
 
-  /fastify-modular/0.4.7_q2t3aenamctzra2sokcux4vgou:
-    resolution: {integrity: sha512-4dWJme92+AX1/UUXY3RVlqhepApZGE9qfwBsK20NBPn0PoRhVNn6R/3qMOlCyOtx3oQGklEN1fkzcge4a1xHZQ==}
+  /fastify-modular/0.5.0_ujywvjf4cuhfd4k3vac5yl47tu:
+    resolution: {integrity: sha512-9QP2Y+YlCUsCVVPm96vFhEYBwK1u0FCxPstii3/h/F/r4blTYmReWL67OouwFMvOVMOX7x5gEYc4mwO/x5rquw==}
     peerDependencies:
-      fastify-modular-route: ^0.4.3
+      fastify-modular-route: ^0.5.0
     dependencies:
       '@fastify/multipart': 6.0.0
       '@fastify/swagger': 6.0.1
       '@fastify/websocket': 5.0.0
       fast-json-stringify: 3.2.0
       fastify: 3.29.0
-      fastify-modular-route: 0.4.4
+      fastify-modular-route: 0.5.0
       pito: 0.1.2
       uuid: 8.3.2
     transitivePeerDependencies:

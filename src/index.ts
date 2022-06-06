@@ -1,4 +1,5 @@
 import {
+    AxiosError,
     AxiosRequestConfig
 } from "axios"
 import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "fastify-modular-route"
@@ -149,7 +150,14 @@ export class JWTManagedRequester {
                     if (api.presets.includes('jwt-bearer')) {
                         others['auth'] = await this.onTokenNeed(this.req)
                     }
-                    return await requestHTTPNoBody(this.req, api, others as any)
+                    try {
+                        return await requestHTTPNoBody(this.req, api, others as any)
+                    } catch (err) {
+                        if (err instanceof AxiosError && err.response?.status === 403) {
+                            others['auth'] = await this.onTokenExpired(this.req)
+                        }
+                        return await requestHTTPNoBody(this.req, api, others as any)
+                    }
                 })()) as any
             case 'POST':
             case 'PUT':
@@ -159,19 +167,58 @@ export class JWTManagedRequester {
                     if (api.presets.includes('jwt-bearer')) {
                         others['auth'] = await this.onTokenNeed(this.req)
                     }
-                    return await requestHTTPBody(this.req, api, others as any)
+                    try {
+                        return await requestHTTPBody(this.req, api, others as any)
+                    } catch (err) {
+                        if (err instanceof AxiosError && err.response?.status === 403) {
+                            others['auth'] = await this.onTokenExpired(this.req)
+                        }
+                        return await requestHTTPBody(this.req, api, others as any)
+                    }
                 })()) as any
             case 'MULTIPART':
                 return PResult((async () => {
                     if (api.presets.includes('jwt-bearer')) {
                         others['auth'] = await this.onTokenNeed(this.req)
                     }
-                    return await requestMultipart(this.req, api, others as any)
+                    try {
+                        return await requestMultipart(this.req, api, others as any)
+                    } catch (err) {
+                        if (err instanceof AxiosError && err.response?.status === 403) {
+                            others['auth'] = await this.onTokenExpired(this.req)
+                        }
+                        return await requestMultipart(this.req, api, others as any)
+                    }
                 })()) as any
             case 'SSE':
-                return requestSSE(this.req, api, others as any) as any
+                
+                return (async () => {
+                    if (api.presets.includes('jwt-bearer')) {
+                        others['auth'] = await this.onTokenNeed(this.req)
+                    }
+                    try{
+                        return await requestSSE(this.req, api, others as any) as any
+                    }catch (err) {
+                        if (err instanceof AxiosError && err.response?.status === 403) {
+                            others['auth'] = await this.onTokenExpired(this.req)
+                        }
+                        return await requestSSE(this.req, api, others as any)
+                    }
+                })() as any
             case 'WS':
-                return requestWS(this.req, api, others as any) as any
+                return (async () => {
+                    if (api.presets.includes('jwt-bearer')) {
+                        others['auth'] = await this.onTokenNeed(this.req)
+                    }
+                    try{
+                        return await requestWS(this.req, api, others as any) as any
+                    }catch (err) {
+                        if (err instanceof AxiosError && err.response?.status === 403) {
+                            others['auth'] = await this.onTokenExpired(this.req)
+                        }
+                        return await requestWS(this.req, api, others as any)
+                    }
+                })() as any
             default:
                 // @ts-ignore
                 throw new Error(`unimplemented method = '${api.method}'`)

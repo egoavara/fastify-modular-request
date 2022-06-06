@@ -2,11 +2,13 @@
 import axios, { AxiosResponse } from "axios"
 import { Multipart } from "fastify-modular-route"
 import FormData from "form-data"
+import { pito } from "pito"
 import QueryString from "qs"
+import { UnexpectedStatus } from "./errors.js"
 import { GenericState } from "./generic-state.js"
 import { MultipartArgs, Requester } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
-import { PResult, Result } from "./result.js"
+import { Result } from "./result.js"
 
 export type MultipartFile = {
     file: any,
@@ -38,7 +40,7 @@ export async function requestMultipart(
         const res = await axios.request({
             method: 'POST',
             url: `${host}${path}`,
-            params: args.query,
+            params: pito.wrap(api.query, args.query),
             paramsSerializer: QueryString.stringify,
             data: form,
             headers,
@@ -48,18 +50,27 @@ export async function requestMultipart(
         if (!contentType.startsWith("application/json")) {
             throw new Error(`unexpected not json result, ${contentType}, response : ${res}`)
         }
-        return {
-            result: 'ok',
-            value: res.data,
+        if (res.status === 204) {
+            return {
+                result: 'ok',
+                value: pito.unwrap(api.response, undefined),
+            }
+        } else if (res.status === 200) {
+            return {
+                result: 'ok',
+                value: pito.unwrap(api.response, res.data),
+            }
+        } else {
+            throw new UnexpectedStatus(res.status)
         }
     } catch (err: any) {
         const response = err.response as AxiosResponse | undefined
         if (response != null) {
             const contentType = response.headers['content-type'] ?? response.headers['Content-Type'] ?? response.headers['CONTENT-TYPE'] ?? ''
-            if (response.status === 403 && contentType.startsWith('application/json')) {
+            if (response.status === 406 && contentType.startsWith('application/json')) {
                 return {
                     result: 'fail',
-                    value: response.data
+                    value: pito.unwrap(api.fail, response.data),
                 }
             }
         }

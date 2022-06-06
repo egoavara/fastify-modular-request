@@ -46,32 +46,3 @@ export function PResult<Ok, Fail>(wrap: Promise<Result<Ok, Fail>>): PResult<Ok, 
     }
     return temp
 }
-// export class PResult<Ok, Fail> extends Promise<Result<Ok, Fail>>{
-//     constructor(wrap: Promise<Result<Ok, Fail>>) {
-//         super((resolve, reject) => {
-//             console.log(wrap.then)
-//             wrap.then((result) => {
-//                 console.log(result)
-//                 resolve(result)
-//             }).catch((err) => {
-//                 reject(err)
-//             })
-//         })
-//     }
-//     ok(handler: (ok: Ok) => void): PResult<Ok, Fail> {
-//         return new PResult(this.then(v => {
-//             if (v.result === 'ok') {
-//                 handler(v.value)
-//             }
-//             return v
-//         }))
-//     }
-//     fail(handler: (fail: Fail) => void): PResult<Ok, Fail> {
-//         return new PResult(this.then(v => {
-//             if (v.result === 'fail') {
-//                 handler(v.value)
-//             }
-//             return v
-//         }))
-//     }
-// }

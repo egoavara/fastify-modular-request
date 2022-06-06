@@ -11,3 +11,10 @@ export class TimeoutError extends Error {
 export class AbortError extends Error {
     constructor() { super(`abort error`) }
 }
+export class UnexpectedStatus extends Error {
+    status: number
+    constructor(status: number) {
+        super(`unexpected status code, ${status}`)
+        this.status = status
+    }
+}

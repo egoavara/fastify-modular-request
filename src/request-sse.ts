@@ -1,5 +1,6 @@
 import EventSource from "both-sse"
 import { SSE } from "fastify-modular-route"
+import { pito } from "pito"
 import qs from "qs"
 import { AbortError, TimeoutError } from "./errors.js"
 import { GenericState } from "./generic-state.js"
@@ -43,7 +44,7 @@ export async function requestSSE(
     const url = new URL(`${host}${path}`)
     const headers: Record<string, string | number | boolean> = {}
     // setup qs, jwtBearer
-    url.search = qs.stringify(args.query)
+    url.search = qs.stringify(pito.wrap(api.query, args.query))
     jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
     //
     return new Promise((resolve, reject) => {
@@ -57,16 +58,16 @@ export async function requestSSE(
         let buffer: Result<any, any>[] = []
         let unlock: undefined | (() => void) = undefined
         // 
-        const timeoutHndl = setTimeout(() => { 
+        const timeoutHndl = setTimeout(() => {
             ac.abort()
-            reject(new TimeoutError(timeout, new Date())) 
+            reject(new TimeoutError(timeout, new Date()))
         }, timeout)
         signal.addEventListener('abort', () => {
             if (unlock !== undefined) {
                 unlock()
                 unlock = undefined
             }
-            if(source.readyState !== EventSource.CLOSED){
+            if (source.readyState !== EventSource.CLOSED) {
                 source.close()
             }
         })
@@ -77,7 +78,7 @@ export async function requestSSE(
                 case 'packet':
                     buffer.push({
                         result: 'ok',
-                        value: data.payload
+                        value: pito.unwrap(api.packet, data.payload)
                     })
                     if (unlock !== undefined) {
                         unlock()
@@ -90,7 +91,7 @@ export async function requestSSE(
                 case 'fail':
                     buffer.push({
                         result: 'fail',
-                        value: data.cause
+                        value: pito.unwrap(api.fail, data.cause)
                     })
                     if (unlock !== undefined) {
                         unlock()
@@ -170,9 +171,6 @@ export async function requestSSE(
                             temp = await aiter.next()
                         }
                     } catch (e) {
-                        console.log('error')
-                        console.log(e)
-                        console.log(e instanceof AbortError)
                         if (!(e instanceof AbortError)) {
                             onCatch(e)
                             throw e
