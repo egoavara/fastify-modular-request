@@ -7,7 +7,7 @@ import { Requester } from "../cjs"
 tap.test('unmanaged', async t => {
     const PORT = 14000
     const route = HTTPNoBody("GET", "/")
-        .withPreset('jwt-bearer')
+        .presets('jwt-bearer')
         .build()
     const fastify = Fastify()
     try {
@@ -41,7 +41,7 @@ tap.test('unmanaged', async t => {
 tap.test('managed', async t => {
     const PORT = 14001
     const route = HTTPNoBody("GET", "/")
-        .withPreset('jwt-bearer')
+        .presets('jwt-bearer')
         .build()
     const fastify = Fastify()
     try {

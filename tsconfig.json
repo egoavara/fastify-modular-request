@@ -1,8 +1,10 @@
 {
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts"
+  ],
   "compilerOptions": {
     "moduleResolution": "Node",
-    "target": "ESNext",
+    "target": "ES2022",
     "declaration": true,
     "removeComments": true,
     "esModuleInterop": true,

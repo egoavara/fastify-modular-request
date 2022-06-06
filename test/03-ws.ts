@@ -8,16 +8,16 @@ import { Requester } from "../cjs/index.js"
 tap.test('ws', async t => {
     const PORT = 13000
     const route = WS("/ping-pong")
-        .withSend(pito.Obj({
+        .send(pito.Obj({
             pong: pito.Num()
         }))
-        .withRecv(pito.Obj({
+        .recv(pito.Obj({
             ping: pito.Num()
         }))
-        .withResponse({
+        .response({
             'greet-server': { args: [pito.Str()], return: pito.Str() }
         })
-        .withRequest({
+        .request({
             'greet-client': { args: [pito.Str()], return: pito.Str() }
         })
         .build()
@@ -28,7 +28,7 @@ tap.test('ws', async t => {
                 .route(route).implements(async ({ manager }) => {
                     manager.onResponse('greet-server', async (name) => `hello, ${name}, i am server`)
                     manager.onReceive(async (data) => { manager.send({ pong: data.ping }) })
-                    await manager.untilClose()
+                    await manager.until()
                 })
                 .build()
                 .instance()
@@ -59,7 +59,7 @@ tap.test('ws', async t => {
         }
 
         t.same(await conn.request('greet-server', 'client'), `hello, client, i am server`)
-        await conn.untilClose()
+        await conn.until()
     } catch (err) {
         t.fail(`${err}`)
     } finally {

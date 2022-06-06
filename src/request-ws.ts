@@ -1,4 +1,4 @@
-import { InferWS, WS } from "fastify-modular-route"
+import { WS } from "fastify-modular-route"
 import WebSocket from "isomorphic-ws"
 import { pito } from "pito"
 import QueryString from "qs"
@@ -7,7 +7,7 @@ import { GenericState } from "./generic-state.js"
 import { RequestArgs, Requester, WSArgs } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
 
-export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] | [...pito[]], return: pito }>, Response extends Record<string, { args: [pito] | [...pito[]], return: pito }>> = {
+export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] | [...pito[]], return: pito }>, Response extends Record<string, { args: [pito] | [...pito[]], return: pito }>, Fail> = {
     socket: any,
     send(data: Send): void,
     request<Rq extends keyof Request>(key: Rq, ...args: pito.MapType<Request[Rq]['args']>): Promise<pito.Type<Request[Rq]['return']>>
@@ -23,7 +23,7 @@ export async function requestWS<
     req: Requester,
     api: WsAPI,
     args: RequestArgs<GenericState, WsAPI>,
-): Promise<WSManager<any, any, any, any>> {
+): Promise<WSManager<any, any, any, any, any>> {
     // setup host
     const host = req.host.resolve(api)
     // setup path
@@ -45,14 +45,14 @@ export async function requestWS<
             throw new Error(`unexpected url protocol ${url.protocol}`)
     }
     // setup websocket
-    const ws = new WebSocket(url.toString())
+    const ws = new WebSocket(url.toString(), {})
     const on = {
         receive: (data: any): void | Promise<void> => { },
         req: {} as Record<string, { resolve: (result: any) => void, reject: (error: any) => void }>,
         res: {} as Record<string, (...args: any[]) => Promise<any>>,
         close: [] as (() => void)[]
     }
-    return new Promise<WSManager<any, any, any, any>>((resolve, reject) => {
+    return new Promise<WSManager<any, any, any, any, any>>((resolve, reject) => {
         // 중간에 끊기면 자동으로 promise 취소
         ws.onclose = (ev) => {
             reject(ev)
@@ -69,43 +69,6 @@ export async function requestWS<
                     // 헤더 셋업
                     ws.send(JSON.stringify({ type: 'ready' }))
                     // 모든 작업이 완료됨
-                    resolve({
-                        socket: ws,
-                        send: (payload) => {
-                            return ws.send(JSON.stringify({ type: 'send', payload: pito.wrap(api.recv, payload) }))
-                        },
-                        // 요청 보내기
-                        request: (key, ...args) => {
-                            // uuid기반으로 새 요청 생성
-                            const id = v4()
-                            return new Promise((resolve, reject) => {
-                                //req에 id 기반으로 promise를 저장해 두었다가 처리.
-                                on.req[id] = { resolve, reject }
-                                ws.send(JSON.stringify({
-                                    type: 'req',
-                                    id,
-                                    method: key as string,
-                                    args: args.map((v, i) => {
-                                        return pito.wrap(api.response[key].args[i], v)
-                                    }),
-                                }))
-                            })
-                        },
-                        onReceive: (handler) => { on.receive = handler },
-                        onResponse: (key, handler) => {
-                            on.res[key as string] = handler
-                        },
-                        close: () => { ws.close() },
-                        until: () => {
-                            return new Promise(resolve => {
-                                if (ws.readyState === ws.CLOSED) {
-                                    resolve()
-                                } else {
-                                    on.close.push(resolve)
-                                }
-                            })
-                        },
-                    })
                     ws.onmessage = (payload) => {
                         const data = JSON.parse(payload.data.toString())
                         switch (data.type) {
@@ -147,6 +110,43 @@ export async function requestWS<
                             closeHandler()
                         }
                     }
+                    resolve({
+                        socket: ws,
+                        send: (payload) => {
+                            return ws.send(JSON.stringify({ type: 'send', payload: pito.wrap(api.recv, payload) }))
+                        },
+                        // 요청 보내기
+                        request: (key, ...args) => {
+                            // uuid기반으로 새 요청 생성
+                            const id = v4()
+                            return new Promise((resolve, reject) => {
+                                //req에 id 기반으로 promise를 저장해 두었다가 처리.
+                                on.req[id] = { resolve, reject }
+                                ws.send(JSON.stringify({
+                                    type: 'req',
+                                    id,
+                                    method: key as string,
+                                    args: args.map((v, i) => {
+                                        return pito.wrap(api.response[key].args[i], v)
+                                    }),
+                                }))
+                            })
+                        },
+                        onReceive: (handler) => { on.receive = handler },
+                        onResponse: (key, handler) => {
+                            on.res[key as string] = handler
+                        },
+                        close: () => { ws.close() },
+                        until: () => {
+                            return new Promise(resolve => {
+                                if (ws.readyState === ws.CLOSED) {
+                                    resolve()
+                                } else {
+                                    on.close.push(resolve)
+                                }
+                            })
+                        },
+                    })
                     return
             }
         }

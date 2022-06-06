@@ -7,3 +7,7 @@ export class TimeoutError extends Error {
         this.expiredAt = expiredAt
     }
 }
+
+export class AbortError extends Error {
+    constructor() { super(`abort error`) }
+}

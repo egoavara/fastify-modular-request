@@ -8,13 +8,13 @@ import { Requester } from "../cjs/index.js"
 tap.test('sse', async t => {
     const PORT = 12000
     const route = SSE("/ping/:until")
-        .withParams(pito.Obj({
+        .params(pito.Obj({
             until: pito.Num(),
         }))
-        .withQuery(pito.Obj({
+        .query(pito.Obj({
             step: pito.Num()
         }))
-        .withPacket(pito.Obj({
+        .packet(pito.Obj({
             index: pito.Num()
         }))
         .build()
@@ -47,11 +47,20 @@ tap.test('sse', async t => {
             },
         })
         let expected = -step
-        for await (const packet of result) {
-            expected += step
-            t.same(packet.index, expected)
-        }
-        t.same(expected, until)
+        await result.forawait(
+            (ok) => {
+                expected += step
+                t.same(ok, { index: expected })
+            },
+            {
+                onFail(fail) {
+                    t.fail(`unexpected fail ${fail}`)
+                },
+                onCatch(err) {
+                    t.fail(`unexpected error ${err}`)
+                },
+            }
+        )
     } catch (err) {
         t.fail(`${err}`)
     } finally {
@@ -64,4 +73,5 @@ tap.test('timeout', async t => {
     t.rejects(async () => {
         await req.request(SSE("/ping").build(), { sse: { timeout: 1000 } })
     })
+
 })

@@ -1,11 +1,12 @@
 
-import axios from "axios"
+import axios, { AxiosResponse } from "axios"
 import { Multipart } from "fastify-modular-route"
 import FormData from "form-data"
 import QueryString from "qs"
 import { GenericState } from "./generic-state.js"
 import { MultipartArgs, Requester } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
+import { PResult, Result } from "./result.js"
 
 export type MultipartFile = {
     file: any,
@@ -20,7 +21,7 @@ export async function requestMultipart(
     api: Multipart<string, string, any, any, any, any>,
     args: MultipartArgs<GenericState, any, any, any>,
 
-): Promise<any> {
+): Promise<Result<any, any>> {
     // setup host
     const host = req.host.resolve(api)
     // setup path
@@ -33,22 +34,35 @@ export async function requestMultipart(
     // setup headers
     const headers: Record<string, string | number | boolean> = form.getHeaders()
     jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
-
-
-    return axios.request({
-        method: 'POST',
-        url: `${host}${path}`,
-        params: args.query,
-        paramsSerializer: QueryString.stringify,
-        data: form,
-        headers,
-        ...(args.axios ?? {})
-
-    }).then(v => {
-        const contentType = v.headers['content-type'] ?? v.headers['Content-Type'] ?? v.headers['CONTENT-TYPE'] ?? ''
+    try {
+        const res = await axios.request({
+            method: 'POST',
+            url: `${host}${path}`,
+            params: args.query,
+            paramsSerializer: QueryString.stringify,
+            data: form,
+            headers,
+            ...(args.axios ?? {}),
+        })
+        const contentType = res.headers['content-type'] ?? res.headers['Content-Type'] ?? res.headers['CONTENT-TYPE'] ?? ''
         if (!contentType.startsWith("application/json")) {
-            throw new Error(`unexpected not json result, ${contentType}, response : ${v}`)
+            throw new Error(`unexpected not json result, ${contentType}, response : ${res}`)
         }
-        return v.data
-    })
+        return {
+            result: 'ok',
+            value: res.data,
+        }
+    } catch (err: any) {
+        const response = err.response as AxiosResponse | undefined
+        if (response != null) {
+            const contentType = response.headers['content-type'] ?? response.headers['Content-Type'] ?? response.headers['CONTENT-TYPE'] ?? ''
+            if (response.status === 403 && contentType.startsWith('application/json')) {
+                return {
+                    result: 'fail',
+                    value: response.data
+                }
+            }
+        }
+        throw err
+    }
 }

@@ -1,20 +1,28 @@
 import EventSource from "both-sse"
 import { SSE } from "fastify-modular-route"
 import qs from "qs"
-import { TimeoutError } from "./errors.js"
+import { AbortError, TimeoutError } from "./errors.js"
 import { GenericState } from "./generic-state.js"
 import { Requester, SSEArgs } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
+import { Result } from "./result.js"
 
 const DEFAULT_TIMEOUT_MS = 6000
+const DEFAULT_MAX_BUFFER = 100
 
-export type SSEManager<Packet> = {
+export type SSEManager<Packet, Fail> = {
     source: EventSource,
-    [Symbol.asyncIterator]: () => AsyncIterator<Packet, void>,
-    iter(): AsyncIterator<Packet, void>,
-    next(): Promise<Packet | undefined>,
-    forawait(onEach: (duration: number) => void): Promise<void>
-    forawait(onEach: (duration: number) => void, onClose?: () => void): void
+    [Symbol.asyncIterator]: () => AsyncIterator<Result<Packet, Fail>>,
+    iter(): AsyncIterator<Result<Packet, Fail>>,
+    next(): Promise<Result<Packet, Fail> | undefined>,
+
+    forawait(
+        onEach: (packet: Packet) => void,
+        option?: {
+            onFail?: (fail: Fail) => void,
+            onCatch?: (err: any) => void,
+        }
+    ): Promise<void>
     close(error?: any): void,
 }
 
@@ -22,136 +30,158 @@ export async function requestSSE(
     req: Requester,
     api: SSE<string, string, any, any, any, any>,
     args: SSEArgs<GenericState, any, any, any>,
-): Promise<SSEManager<any>> {
+): Promise<SSEManager<any, any>> {
     // =============================================
+    const ac = new AbortController()
     const timeout = args.sse?.timeout ?? DEFAULT_TIMEOUT_MS
+    const maxBuffer = args.sse?.maxBuffer ?? DEFAULT_MAX_BUFFER
+    const signal = ac.signal
     // =============================================
-    // setup host
+    // setup host, path, url, headers
     const host = req.host.resolve(api)
-    // setup path
     const path = req.path.resolve(api.path, api.params, args.params)
-    // setup headers
-    const headers: Record<string, string | number | boolean> = {}
-    jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
-    // setup url
     const url = new URL(`${host}${path}`)
+    const headers: Record<string, string | number | boolean> = {}
+    // setup qs, jwtBearer
     url.search = qs.stringify(args.query)
-    // setup eventsource
-    const sseUrl = url.toString()
-    const sseInit = { headers: Object.fromEntries(Object.entries(headers).map(([k, v]) => ([k, v.toString()]))) }
+    jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
+    //
     return new Promise((resolve, reject) => {
-        const source = new EventSource(sseUrl, sseInit)
+        const source = new EventSource(
+            url.toString(),
+            {
+                headers: Object.fromEntries(Object.entries(headers).map(([k, v]) => ([k, v.toString()]))),
+            }
+        )
         // eventsource to SSEManager
-        let unlock: ((data: any[]) => void) | undefined = undefined
-        let blocker = new Promise<any[]>(resolve => unlock = resolve)
-        let buffer: any[] = []
-        let loopDone = false
-        let err: any = undefined
-        const close = (error?: any) => {
-            loopDone = true
-            source.close()
-            if (unlock !== undefined) {
-                unlock(buffer)
-                buffer = []
-            }
-            if (error !== undefined) {
-                err = error
-            }
-        }
+        let buffer: Result<any, any>[] = []
+        let unlock: undefined | (() => void) = undefined
         // 
-        const timeoutHndl = setTimeout(() => {
-            close()
-            reject(new TimeoutError(timeout, new Date()))
+        const timeoutHndl = setTimeout(() => { 
+            ac.abort()
+            reject(new TimeoutError(timeout, new Date())) 
         }, timeout)
+        signal.addEventListener('abort', () => {
+            if (unlock !== undefined) {
+                unlock()
+                unlock = undefined
+            }
+            if(source.readyState !== EventSource.CLOSED){
+                source.close()
+            }
+        })
         // on message handler
         source.onmessage = (event) => {
             const data = JSON.parse(event.data.toString())
             switch (data.message) {
                 case 'packet':
-                    buffer.push(data.payload)
+                    buffer.push({
+                        result: 'ok',
+                        value: data.payload
+                    })
                     if (unlock !== undefined) {
-                        unlock(buffer)
-                        buffer = []
+                        unlock()
+                        unlock = undefined
+                    }
+                    if (buffer.length > maxBuffer) {
+                        buffer.shift()
+                    }
+                    break
+                case 'fail':
+                    buffer.push({
+                        result: 'fail',
+                        value: data.cause
+                    })
+                    if (unlock !== undefined) {
+                        unlock()
                         unlock = undefined
                     }
                     break
                 case 'throw':
-                    close(data.error)
+                    ac.abort(data.error)
                     break
                 case 'close':
-                    close()
+                    ac.abort(null)
                     break
             }
         }
-        // 
-        const iterator = (async function* () {
-            while (!loopDone) {
-                yield* await blocker
-                if (loopDone) {
-                    break
+        //
+        const aiter: AsyncIterator<Result<any, any>, void> = {
+            async next() {
+                if (buffer.length > 0) {
+                    return {
+                        value: buffer.shift()!!
+                    }
                 }
-                blocker = new Promise<any[]>(resolve => unlock = resolve)
+                if (signal.aborted) {
+                    if (signal.reason !== null) {
+                        throw signal.reason
+                    }
+                    return {
+                        done: true,
+                        value: undefined,
+                    }
+                }
+                await (new Promise<void>(resolve => unlock = resolve))
+                if (signal.aborted) {
+                    if (signal.reason !== null) {
+                        throw signal.reason
+                    }
+                    return {
+                        done: true,
+                        value: undefined,
+                    }
+                }
+                if (buffer.length > 0) {
+                    return {
+                        value: buffer.shift()!!
+                    }
+                }
+                throw new Error(`unreachable`)
             }
-            if (err !== undefined) {
-                throw err
-            }
-            yield* buffer
-            return
-        })()
+        }
         // 
-        let blockIterator: any = undefined
         source.onopen = () => {
             clearTimeout(timeoutHndl)
+
             resolve({
                 source,
-                [Symbol.asyncIterator]: () => {
-                    if (blockIterator !== undefined) {
-                        throw blockIterator
-                    }
-                    return iterator
-                },
-                iter() {
-                    if (blockIterator !== undefined) {
-                        throw blockIterator
-                    }
-                    return iterator
-                },
+                [Symbol.asyncIterator]: () => aiter,
+                iter() { return aiter },
                 next() {
-                    if (blockIterator !== undefined) {
-                        throw blockIterator
-                    }
-                    return iterator.next().then(v => {
+                    return aiter.next().then(v => {
                         if (v.done) {
                             return undefined
                         }
                         return v.value
                     })
                 },
-                // @ts-expect-error
-                forawait(onEach, onClose) {
-                    blockIterator = new Error(`forawait called, forawait take async iterator`)
-                    if (typeof onClose === 'undefined') {
-                        return new Promise<void>(resolve => {
-                            (async () => {
-                                for await (const duration of iterator) {
-                                    onEach(duration)
-                                }
-                            })().then(_ => {
-                                resolve()
-                            })
-                        }) as any
+                async forawait(onEach, option?) {
+                    const onCatch = option?.onCatch ?? ((err: any) => { })
+                    const onFail = option?.onFail ?? ((fail: any) => { })
+                    try {
+                        let temp = await aiter.next()
+                        while (temp.done !== true) {
+                            if (temp.value.result === 'ok') {
+                                onEach(temp.value.value)
+                            } else {
+                                onFail(temp.value.value)
+                            }
+                            temp = await aiter.next()
+                        }
+                    } catch (e) {
+                        console.log('error')
+                        console.log(e)
+                        console.log(e instanceof AbortError)
+                        if (!(e instanceof AbortError)) {
+                            onCatch(e)
+                            throw e
+                        }
                     }
-                    (async () => {
-                        for await (const duration of iterator) {
-                            onEach(duration)
-                        }
-                    })().then(_ => {
-                        if (onClose !== undefined) {
-                            onClose()
-                        }
-                    })
                 },
-                close,
+                close: (reason?: any) => {
+                    ac.abort(reason)
+                },
             })
         }
     })

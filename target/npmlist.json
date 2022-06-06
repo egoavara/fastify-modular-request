@@ -1,0 +1,1 @@
+{"version":"0.4.2","name":"fastify-modular-request","dependencies":{"both-sse":{"version":"0.1.1"},"isomorphic-ws":{"version":"4.0.1"},"uuid":{"version":"8.3.2"}}}
