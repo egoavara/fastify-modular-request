@@ -124,6 +124,11 @@ export async function requestSSE(
                     }
                 }
                 await (new Promise<void>(resolve => unlock = resolve))
+                if (buffer.length > 0) {
+                    return {
+                        value: buffer.shift()!!
+                    }
+                }
                 if (signal.aborted) {
                     if (signal.reason !== null) {
                         throw signal.reason
