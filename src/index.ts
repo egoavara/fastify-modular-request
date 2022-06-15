@@ -103,6 +103,9 @@ export class Requester {
 
     /// ==========
     request<API extends Route>(api: API, others: RequestArgs<{ ManagedAuth: false }, API>): RequestRet<API> {
+        // 쿼리 오브젝트 초기화
+        others.query = others.query ?? {}
+        // 
         switch (api.method) {
             case 'HEAD':
             case 'GET':
@@ -143,6 +146,9 @@ export class JWTManagedRequester {
         api: API,
         others: RequestArgs<{ ManagedAuth: true }, API>
     ): RequestRet<API> {
+        // 쿼리 오브젝트 초기화
+        others.query = others.query ?? {}
+        // 
         switch (api.method) {
             case 'HEAD':
             case 'GET':
