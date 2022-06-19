@@ -30,44 +30,40 @@ export type PResult<Ok, Fail> = Promise<Result<Ok, Fail>> & {
     fail(handler: (fail: Fail) => void): PResult<Ok, Fail>
 }
 export function PResult<Ok, Fail>(wrap: Promise<Result<Ok, Fail>>): PResult<Ok, Fail> {
-    return Object.create(wrap, {
-        ok: {
-            value: function (handler?: (ok: Ok) => void) {
-                if (handler === undefined) {
-                    return this.then((result: Result<Ok, Fail>) => {
-                        if (result.result === 'ok') {
-                            return result.value
-                        } else {
-                            throw result.value
-                        }
-                    })
-                }
-                return PResult(this.then((result: Result<Ok, Fail>) => {
+    return Object.assign(wrap, {
+        ok: function (this: PResult<Ok, Fail>, handler?: (ok: Ok) => void) {
+            if (handler === undefined) {
+                return this.then((result: Result<Ok, Fail>) => {
                     if (result.result === 'ok') {
-                        handler(result.value)
+                        return result.value
+                    } else {
+                        throw result.value
                     }
-                    return result
-                }))
+                })
             }
-        },
-        fail: {
-            value: function (handler?: (fail: Fail) => void) {
-                if (handler === undefined) {
-                    return this.then((result: Result<Ok, Fail>) => {
-                        if (result.result === 'fail') {
-                            return result.value
-                        } else {
-                            throw result.value
-                        }
-                    })
+            return PResult(this.then((result: Result<Ok, Fail>) => {
+                if (result.result === 'ok') {
+                    handler(result.value)
                 }
-                return PResult(this.then((result: Result<Ok, Fail>) => {
+                return result
+            }))
+        },
+        fail: function (this: PResult<Ok, Fail>, handler?: (fail: Fail) => void) {
+            if (handler === undefined) {
+                return this.then((result: Result<Ok, Fail>) => {
                     if (result.result === 'fail') {
-                        handler(result.value)
+                        return result.value
+                    } else {
+                        throw result.value
                     }
-                    return result
-                }))
+                })
             }
+            return PResult(this.then((result: Result<Ok, Fail>) => {
+                if (result.result === 'fail') {
+                    handler(result.value)
+                }
+                return result
+            }))
         }
-    })
+    }) as any
 }
