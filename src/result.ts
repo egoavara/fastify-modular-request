@@ -23,26 +23,51 @@ export namespace Result {
 }
 
 export type PResult<Ok, Fail> = Promise<Result<Ok, Fail>> & {
+    ok(): Promise<Ok>
     ok(handler: (ok: Ok) => void): PResult<Ok, Fail>
+
+    fail(): Promise<Fail>
     fail(handler: (fail: Fail) => void): PResult<Ok, Fail>
 }
 export function PResult<Ok, Fail>(wrap: Promise<Result<Ok, Fail>>): PResult<Ok, Fail> {
-    const temp = wrap as PResult<Ok, Fail>
-    temp.ok = function (handler) {
-        return PResult(this.then(result => {
-            if (result.result === 'ok') {
-                handler(result.value)
+    return Object.create(wrap, {
+        ok: {
+            value: function (handler?: (ok: Ok) => void) {
+                if (handler === undefined) {
+                    return this.then((result: Result<Ok, Fail>) => {
+                        if (result.result === 'ok') {
+                            return result.value
+                        } else {
+                            throw result.value
+                        }
+                    })
+                }
+                return PResult(this.then((result: Result<Ok, Fail>) => {
+                    if (result.result === 'ok') {
+                        handler(result.value)
+                    }
+                    return result
+                }))
             }
-            return result
-        }))
-    }
-    temp.fail = function (handler) {
-        return PResult(this.then(result => {
-            if (result.result === 'fail') {
-                handler(result.value)
+        },
+        fail: {
+            value: function (handler?: (fail: Fail) => void) {
+                if (handler === undefined) {
+                    return this.then((result: Result<Ok, Fail>) => {
+                        if (result.result === 'fail') {
+                            return result.value
+                        } else {
+                            throw result.value
+                        }
+                    })
+                }
+                return PResult(this.then((result: Result<Ok, Fail>) => {
+                    if (result.result === 'fail') {
+                        handler(result.value)
+                    }
+                    return result
+                }))
             }
-            return result
-        }))
-    }
-    return temp
+        }
+    })
 }
