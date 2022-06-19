@@ -1,7 +1,5 @@
 // http manager using axios as requester
-
-import type { AxiosResponse } from "axios"
-import axios from "axios"
+import * as Axios from "axios"
 import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody } from "fastify-modular-route"
 import { pito } from "pito"
 import QueryString from "qs"
@@ -24,7 +22,7 @@ export async function requestHTTPNoBody(
     const headers: Record<string, string | number | boolean> = {}
     jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
     try {
-        const res = await axios.request({
+        const res = await Axios.default.request({
             ...(args.axios ?? {}),
             method: api.method,
             url: `${host}${path}`,
@@ -50,7 +48,7 @@ export async function requestHTTPNoBody(
             throw new UnexpectedStatus(res.status)
         }
     } catch (err: any) {
-        const response = err.response as AxiosResponse | undefined
+        const response = err.response as Axios.AxiosResponse | undefined
         if (response != null) {
             const contentType = response.headers['content-type'] ?? response.headers['Content-Type'] ?? response.headers['CONTENT-TYPE'] ?? ''
             if (response.status === 406 && contentType.startsWith('application/json')) {
@@ -80,7 +78,7 @@ export async function requestHTTPBody(
     jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
 
     try {
-        const res = await axios.request({
+        const res = await Axios.default.request({
             ...(args.axios ?? {}),
             method: api.method,
             url: `${host}${path}`,
@@ -107,7 +105,7 @@ export async function requestHTTPBody(
             throw new UnexpectedStatus(res.status)
         }
     } catch (err: any) {
-        const response = err.response as AxiosResponse | undefined
+        const response = err.response as Axios.AxiosResponse | undefined
         if (response != null) {
             const contentType = response.headers['content-type'] ?? response.headers['Content-Type'] ?? response.headers['CONTENT-TYPE'] ?? ''
             if (response.status === 406 && contentType.startsWith('application/json')) {

@@ -1,7 +1,4 @@
-import {
-    AxiosError,
-    AxiosRequestConfig
-} from "axios"
+
 import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "fastify-modular-route"
 import { pito } from "pito"
 import { GenericState } from "./generic-state.js"
@@ -14,28 +11,27 @@ import { requestSSE, SSEManager } from "./request-sse.js"
 import { requestWS, WSManager } from "./request-ws.js"
 import { PResult, Result } from "./result.js"
 import { BodySnippet, ParamsSnippet, QuerySnippet } from "./utils.js"
-
-
+import * as Axios from "axios"
 
 export type HTTPNoBodyArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
-    & { axios?: AxiosRequestConfig }
+    & { axios?: Axios.AxiosRequestConfig }
 
 export type HTTPBodyArgs<State extends GenericState, Params, Query, Body, Preset> =
     & BodySnippet<Body>
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
-    & { axios?: AxiosRequestConfig }
+    & { axios?: Axios.AxiosRequestConfig }
 
 export type MultipartArgs<State extends GenericState, Params, Query, Preset> =
     & { files: MultipartFile[] }
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
-    & { axios?: AxiosRequestConfig }
+    & { axios?: Axios.AxiosRequestConfig }
 
 export type SSEOption = {
     timeout?: number // ms
@@ -159,7 +155,7 @@ export class JWTManagedRequester {
                     try {
                         return await requestHTTPNoBody(this.req, api, others as any)
                     } catch (err) {
-                        if (err instanceof AxiosError && err.response?.status === 403) {
+                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
                         }
                         return await requestHTTPNoBody(this.req, api, others as any)
@@ -176,7 +172,7 @@ export class JWTManagedRequester {
                     try {
                         return await requestHTTPBody(this.req, api, others as any)
                     } catch (err) {
-                        if (err instanceof AxiosError && err.response?.status === 403) {
+                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
                         }
                         return await requestHTTPBody(this.req, api, others as any)
@@ -190,22 +186,22 @@ export class JWTManagedRequester {
                     try {
                         return await requestMultipart(this.req, api, others as any)
                     } catch (err) {
-                        if (err instanceof AxiosError && err.response?.status === 403) {
+                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
                         }
                         return await requestMultipart(this.req, api, others as any)
                     }
                 })()) as any
             case 'SSE':
-                
+
                 return (async () => {
                     if (api.presets.includes('jwt-bearer')) {
                         others['auth'] = await this.onTokenNeed(this.req)
                     }
-                    try{
+                    try {
                         return await requestSSE(this.req, api, others as any) as any
-                    }catch (err) {
-                        if (err instanceof AxiosError && err.response?.status === 403) {
+                    } catch (err) {
+                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
                         }
                         return await requestSSE(this.req, api, others as any)
@@ -216,10 +212,10 @@ export class JWTManagedRequester {
                     if (api.presets.includes('jwt-bearer')) {
                         others['auth'] = await this.onTokenNeed(this.req)
                     }
-                    try{
+                    try {
                         return await requestWS(this.req, api, others as any) as any
-                    }catch (err) {
-                        if (err instanceof AxiosError && err.response?.status === 403) {
+                    } catch (err) {
+                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
                         }
                         return await requestWS(this.req, api, others as any)
