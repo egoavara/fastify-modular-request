@@ -2,6 +2,7 @@ import { pito } from "pito"
 import tap from "tap"
 import { ManagerPath } from "../cjs/manager-path.js"
 import { ManagerHost } from "../cjs/manager-host.js"
+import { PResult } from "../cjs/result.js"
 import { HTTPNoBody } from "fastify-modular-route"
 
 tap.test('manager-path', async t => {
@@ -62,5 +63,23 @@ tap.test('manager-host', async t => {
                 'r0': '#unknown',
             }
         )
+    })
+})
+
+tap.test('presult', async t => {
+    t.same(
+        await PResult(Promise.resolve({ result: 'ok', value: 'hello, world' })).ok(),
+        'hello, world'
+    )
+    await PResult(Promise.resolve({ result: 'ok', value: 'hello, world' })).ok((ok) => {
+        t.same(ok, 'hello, world')
+    })
+
+    t.same(
+        await PResult(Promise.resolve({ result: 'fail', value: 'hello, world' })).fail(),
+        'hello, world'
+    )
+    await PResult(Promise.resolve({ result: 'fail', value: 'hello, world' })).fail((fail) => {
+        t.same(fail, 'hello, world')
     })
 })

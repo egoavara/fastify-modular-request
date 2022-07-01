@@ -1,5 +1,5 @@
 
-import axios, { AxiosResponse } from "axios"
+import * as Axios from "axios"
 import { Multipart } from "fastify-modular-route"
 import FormData from "form-data"
 import { pito } from "pito"
@@ -37,7 +37,7 @@ export async function requestMultipart(
     const headers: Record<string, string | number | boolean> = form.getHeaders()
     jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
     try {
-        const res = await axios.request({
+        const res = await Axios.default.request({
             method: 'POST',
             url: `${host}${path}`,
             params: pito.wrap(api.query, args.query),
@@ -64,7 +64,7 @@ export async function requestMultipart(
             throw new UnexpectedStatus(res.status)
         }
     } catch (err: any) {
-        const response = err.response as AxiosResponse | undefined
+        const response = err.response as Axios.AxiosResponse | undefined
         if (response != null) {
             const contentType = response.headers['content-type'] ?? response.headers['Content-Type'] ?? response.headers['CONTENT-TYPE'] ?? ''
             if (response.status === 406 && contentType.startsWith('application/json')) {
