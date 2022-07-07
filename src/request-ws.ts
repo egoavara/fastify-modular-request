@@ -45,7 +45,7 @@ export async function requestWS<
             throw new Error(`unexpected url protocol ${url.protocol}`)
     }
     // setup websocket
-    const ws = new WebSocket(url.toString(), {})
+    const ws = new WebSocket(url.toString())
     const on = {
         receive: (data: any): void | Promise<void> => { },
         req: {} as Record<string, { resolve: (result: any) => void, reject: (error: any) => void }>,
