@@ -17,6 +17,14 @@ export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] 
     until(): Promise<void>,
 }
 
+
+function blobOrBuffer(target: any): string {
+    if (target.text === undefined) {
+        return target.text()
+    } else {
+        return target.toString()
+    }
+}
 export async function requestWS<
     WsAPI extends WS<string, string, any, any, any, any, any, any, any>
 >(
@@ -59,7 +67,7 @@ export async function requestWS<
         }
         // 연결 대기중
         ws.onmessage = (data) => {
-            const packet = JSON.parse(data.data.toString())
+            const packet = JSON.parse(blobOrBuffer(data.data))
             switch (packet.type) {
                 case "need-header":
                     // 헤더 셋업
@@ -70,7 +78,7 @@ export async function requestWS<
                     ws.send(JSON.stringify({ type: 'ready' }))
                     // 모든 작업이 완료됨
                     ws.onmessage = (payload) => {
-                        const data = JSON.parse(payload.data.toString())
+                        const data = JSON.parse(blobOrBuffer(payload.data))
                         switch (data.type) {
                             case "send":
 
