@@ -1,6 +1,6 @@
 {
   "name": "fastify-modular-request",
-  "version": "0.5.10",
+  "version": "0.5.11",
   "main": "./cjs/index.js",
   "module": "./esm/index.js",
   "exports": {
