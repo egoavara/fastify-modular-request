@@ -19,7 +19,7 @@ export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] 
 
 
 function blobOrBuffer(target: any): string {
-    if (target.text === undefined) {
+    if (target.text !== undefined) {
         return target.text()
     } else {
         return target.toString()
