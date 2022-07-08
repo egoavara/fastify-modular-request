@@ -18,11 +18,17 @@ export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] 
 }
 
 
-function blobOrBuffer(target: any): string {
+function blobOrBuffer(target: any): any {
+    let unpackedPacket:string
     if (target.text !== undefined) {
-        return target.text()
+        unpackedPacket = target.text()
     } else {
-        return target.toString()
+        unpackedPacket = target.toString()
+    }
+    try{
+        return JSON.parse(unpackedPacket)
+    }catch(err){
+        throw new Error(`json failed : ${unpackedPacket} cause ${err}`)
     }
 }
 export async function requestWS<
@@ -67,7 +73,8 @@ export async function requestWS<
         }
         // 연결 대기중
         ws.onmessage = (data) => {
-            const packet = JSON.parse(blobOrBuffer(data.data))
+            const packet = blobOrBuffer(data.data)
+            
             switch (packet.type) {
                 case "need-header":
                     // 헤더 셋업
@@ -78,10 +85,9 @@ export async function requestWS<
                     ws.send(JSON.stringify({ type: 'ready' }))
                     // 모든 작업이 완료됨
                     ws.onmessage = (payload) => {
-                        const data = JSON.parse(blobOrBuffer(payload.data))
+                        const data = blobOrBuffer(payload.data)
                         switch (data.type) {
                             case "send":
-
                                 const thenIfPromise = on.receive(pito.unwrap(api.send, data.payload))
                                 if (thenIfPromise instanceof Promise) {
                                     thenIfPromise.then()
