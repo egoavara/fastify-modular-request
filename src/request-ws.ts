@@ -75,12 +75,13 @@ export async function requestWS<
             reject(ev)
         }
         const clientReady = (data: WebSocket.MessageEvent) => {
-            if (isEnded) {
-                return
-            }
             blobOrBuffer(data.data).then(async (packet: any) => {
                 switch (packet.type) {
                     case "complete":
+                        if (isEnded) {
+                            console.error(`multiple complete :`, packet)
+                            return
+                        }
                         isEnded = true
                         ws.onclose = () => {
                             for (const closeHandler of on.close) {
