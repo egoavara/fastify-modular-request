@@ -67,60 +67,62 @@ export async function requestWS<
         close: [] as (() => void)[]
     }
     return new Promise<WSManager<any, any, any, any, any>>((resolve, reject) => {
+        let isEnded = false
         // 중간에 끊기면 자동으로 promise 취소
         ws.onclose = (ev) => {
+            isEnded = true
             reject(ev)
         }
-        // 연결 대기중
-        ws.onmessage = (data) => {
-            (async () => {
-                const packet = await blobOrBuffer(data.data)
+        const afterComplete = (data: WebSocket.MessageEvent) => {
+            blobOrBuffer(data.data).then((packet) => {
                 switch (packet.type) {
-                    case "need-header":
-                        // 헤더 셋업
-                        ws.send(JSON.stringify({ type: 'header', header: headers }))
-                        return
-                    case "complete":
-                        // 헤더 셋업
-                        ws.send(JSON.stringify({ type: 'ready' }))
-                        // 모든 작업이 완료됨
-                        ws.onmessage = (payload) => {
-                            (async () => {
-                                const data = await blobOrBuffer(payload.data)
-                                switch (data.type) {
-                                    case "send":
-                                        const thenIfPromise = on.receive(pito.unwrap(api.send, data.payload))
-                                        if (thenIfPromise instanceof Promise) {
-                                            thenIfPromise.then()
-                                        }
-                                        break
-                                    case "req":
-                                        if (!(data.method in on.res)) {
-                                            throw new Error(`'${data.method}'를 서버에서 요청했지만 처리할 수 없습니다.`)
-                                        }
-                                        on.res[data.method](...data.args.map((v: any, i: number) => {
-                                            return pito.unwrap(api.request[data.method].args[i], v)
-                                        })).then(result => {
-                                            ws.send(JSON.stringify({
-                                                type: 'res',
-                                                id: data.id,
-                                                method: data.mehtod,
-                                                result
-                                            }))
-                                        })
-                                        break
-                                    case "res":
-                                        if (!(data.id in on.req)) {
-                                            throw new Error(`'${data.id}'를 서버에서 받았지만 알수 없는 응답입니다.`)
-                                        }
-                                        on.req[data.id].resolve(
-                                            pito.unwrap(api.response[data.method].return, data.result)
-                                        )
-                                        delete on.req[data.id]
-                                        break
-                                }
-                            })();
+                    case "send":
+                        const thenIfPromise = on.receive(pito.unwrap(api.send, packet.payload))
+                        if (thenIfPromise instanceof Promise) {
+                            thenIfPromise.then()
                         }
+                        break
+                    case "req":
+                        if (!(packet.method in on.res)) {
+                            throw new Error(`'${packet.method}'를 서버에서 요청했지만 처리할 수 없습니다.`)
+                        }
+                        on.res[packet.method](...packet.args.map((v: any, i: number) => {
+                            return pito.unwrap(api.request[packet.method].args[i], v)
+                        })).then(result => {
+                            ws.send(JSON.stringify({
+                                type: 'res',
+                                id: packet.id,
+                                method: packet.mehtod,
+                                result
+                            }))
+                        })
+                        break
+                    case "res":
+                        if (!(packet.id in on.req)) {
+                            throw new Error(`'${packet.id}'를 서버에서 받았지만 알수 없는 응답입니다.`)
+                        }
+                        on.req[packet.id].resolve(
+                            pito.unwrap(api.response[packet.method].return, packet.result)
+                        )
+                        delete on.req[packet.id]
+                        break
+                    default:
+                        console.error(`unknown packet :`, packet)
+                        break
+                }
+            })
+        }
+        const beginWS = (data: WebSocket.MessageEvent) => {
+            blobOrBuffer(data.data).then(async (packet: any) => {
+                if (isEnded) {
+                    return
+                }
+                switch (packet.type) {
+                    case "complete":
+                        isEnded = true
+                        // 채팅 준비 완료
+                        // 모든 작업이 완료됨
+                        ws.onmessage = afterComplete
                         ws.onclose = () => {
                             for (const closeHandler of on.close) {
                                 closeHandler()
@@ -164,8 +166,70 @@ export async function requestWS<
                             },
                         })
                         return
+                    default:
+                        isEnded = true
+                        reject(new Error(`unexpected packet : ${packet}`))
+                        return
                 }
-            })();
+            })
         }
+        const clientReady = (data: WebSocket.MessageEvent) => {
+            if (isEnded) {
+                return
+            }
+            blobOrBuffer(data.data).then(async (packet: any) => {
+                switch (packet.type) {
+                    case "complete":
+                        ws.onmessage = beginWS
+                        // 채팅 준비 완료
+                        return
+                    default:
+                        isEnded = true
+                        reject(new Error(`unexpected packet : ${packet}`))
+                        return
+                }
+            })
+        }
+        const initialize = (data: WebSocket.MessageEvent) => {
+            blobOrBuffer(data.data).then(async (packet: any) => {
+                if (isEnded) {
+                    return
+                }
+                switch (packet.type) {
+                    case "need-header":
+                        // 헤더 셋업
+                        ws.send(JSON.stringify({ type: 'header', header: headers }))
+                        return
+                    case "server-ready":
+                        ws.onmessage = clientReady
+                        ws.send(JSON.stringify({ type: 'client-ready' }))
+                        return
+                    default:
+                        isEnded = true
+                        reject(new Error(`unexpected packet : ${packet}`))
+                        return
+                }
+            })
+        }
+        // 연결 대기중
+        ws.onmessage = initialize
+        //     // const packet = 
+        //     (async () => {
+        //         const packet = await blobOrBuffer(data.data)
+        //         switch (packet.type) {
+        //             case "need-header":
+        //                 // 헤더 셋업
+        //                 ws.send(JSON.stringify({ type: 'header', header: headers }))
+        //                 return
+        //             case "server-ready":
+        //                 // 헤더 셋업
+        //                 ws.onmessage = ()=>{
+
+        //                 }
+        //                 
+        //                 return
+        //         }
+        //     })();
+        // }
     })
 }
