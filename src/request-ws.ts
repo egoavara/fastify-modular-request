@@ -11,10 +11,13 @@ export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] 
     socket: any,
     send(data: Send): void,
     request<Rq extends keyof Request>(key: Rq, ...args: pito.MapType<Request[Rq]['args']>): Promise<pito.Type<Request[Rq]['return']>>
+    // 
     onReceive(handler: (data: Recv) => void | Promise<void>): void,
     onResponse<Rs extends keyof Response>(key: Rs, handler: (...args: pito.MapType<Response[Rs]['args']>) => Promise<pito.Type<Response[Rs]['return']>>): void,
-    close(): void,
+
+    ready(): Promise<void>,
     until(): Promise<void>,
+    close(): void,
 }
 
 
@@ -71,23 +74,21 @@ export async function requestWS<
         // 중간에 끊기면 자동으로 promise 취소
         ws.onclose = (ev) => {
             isEnded = true
-            ws.close()
             reject(ev)
         }
-        const clientReady = (data: WebSocket.MessageEvent) => {
+        ws.addEventListener('')
+        // 연결 대기중
+        ws.onmessage = (data: WebSocket.MessageEvent) => {
             blobOrBuffer(data.data).then(async (packet: any) => {
+                if (isEnded) {
+                    return
+                }
                 switch (packet.type) {
-                    case "complete":
-                        if (isEnded) {
-                            console.error(`multiple complete :`, packet)
-                            return
-                        }
-                        isEnded = true
-                        ws.onclose = () => {
-                            for (const closeHandler of on.close) {
-                                closeHandler()
-                            }
-                        }
+                    case "need-header":
+                        // 헤더 셋업
+                        ws.send(JSON.stringify({ type: 'header', header: headers }))
+                        return
+                    case "server-ready":
                         resolve({
                             socket: ws,
                             send: (payload) => {
@@ -114,7 +115,71 @@ export async function requestWS<
                             onResponse: (key, handler) => {
                                 on.res[key as string] = handler
                             },
-                            close: () => { ws.close() },
+                            ready: () => {
+                                return new Promise(resolve => {
+                                    ws.send(JSON.stringify({ type: 'client-ready' }))
+                                    ws.onmessage = (data) => {
+                                        blobOrBuffer(data.data).then(async (packet: any) => {
+                                            switch (packet.type) {
+                                                case "complete":
+                                                    if (isEnded) {
+                                                        console.error(`multiple complete :`, packet)
+                                                        return
+                                                    }
+                                                    isEnded = true
+                                                    ws.onclose = () => {
+                                                        for (const closeHandler of on.close) {
+                                                            closeHandler()
+                                                        }
+                                                    }
+                                                    resolve()
+                                                    // 채팅 준비 완료
+                                                    return
+
+                                                case "send":
+                                                    const thenIfPromise = on.receive(pito.unwrap(api.send, packet.payload))
+                                                    if (thenIfPromise instanceof Promise) {
+                                                        thenIfPromise.then()
+                                                    }
+                                                    break
+                                                case "req":
+                                                    if (!(packet.method in on.res)) {
+                                                        throw new Error(`'${packet.method}'를 서버에서 요청했지만 처리할 수 없습니다.`)
+                                                    }
+                                                    on.res[packet.method](...packet.args.map((v: any, i: number) => {
+                                                        return pito.unwrap(api.request[packet.method].args[i], v)
+                                                    })).then(result => {
+                                                        ws.send(JSON.stringify({
+                                                            type: 'res',
+                                                            id: packet.id,
+                                                            method: packet.mehtod,
+                                                            result
+                                                        }))
+                                                    })
+                                                    break
+                                                case "res":
+                                                    if (!(packet.id in on.req)) {
+                                                        throw new Error(`'${packet.id}'를 서버에서 받았지만 알수 없는 응답입니다.`)
+                                                    }
+                                                    on.req[packet.id].resolve(
+                                                        pito.unwrap(api.response[packet.method].return, packet.result)
+                                                    )
+                                                    delete on.req[packet.id]
+                                                    break
+                                                default:
+                                                    if (isEnded) {
+                                                        console.error(`unknown packet :`, packet)
+                                                    } else {
+                                                        isEnded = true
+                                                        ws.close()
+                                                        reject(new Error(`unexpected packet : ${packet}`))
+                                                    }
+                                                    break
+                                            }
+                                        })
+                                    }
+                                })
+                            },
                             until: () => {
                                 return new Promise(resolve => {
                                     if (ws.readyState === ws.CLOSED) {
@@ -124,65 +189,8 @@ export async function requestWS<
                                     }
                                 })
                             },
+                            close: () => { ws.close() },
                         })
-                        // 채팅 준비 완료
-                        return
-
-                    case "send":
-                        const thenIfPromise = on.receive(pito.unwrap(api.send, packet.payload))
-                        if (thenIfPromise instanceof Promise) {
-                            thenIfPromise.then()
-                        }
-                        break
-                    case "req":
-                        if (!(packet.method in on.res)) {
-                            throw new Error(`'${packet.method}'를 서버에서 요청했지만 처리할 수 없습니다.`)
-                        }
-                        on.res[packet.method](...packet.args.map((v: any, i: number) => {
-                            return pito.unwrap(api.request[packet.method].args[i], v)
-                        })).then(result => {
-                            ws.send(JSON.stringify({
-                                type: 'res',
-                                id: packet.id,
-                                method: packet.mehtod,
-                                result
-                            }))
-                        })
-                        break
-                    case "res":
-                        if (!(packet.id in on.req)) {
-                            throw new Error(`'${packet.id}'를 서버에서 받았지만 알수 없는 응답입니다.`)
-                        }
-                        on.req[packet.id].resolve(
-                            pito.unwrap(api.response[packet.method].return, packet.result)
-                        )
-                        delete on.req[packet.id]
-                        break
-                    default:
-                        if (isEnded) {
-                            console.error(`unknown packet :`, packet)
-                        } else {
-                            isEnded = true
-                            ws.close()
-                            reject(new Error(`unexpected packet : ${packet}`))
-                        }
-                        break
-                }
-            })
-        }
-        const initialize = (data: WebSocket.MessageEvent) => {
-            blobOrBuffer(data.data).then(async (packet: any) => {
-                if (isEnded) {
-                    return
-                }
-                switch (packet.type) {
-                    case "need-header":
-                        // 헤더 셋업
-                        ws.send(JSON.stringify({ type: 'header', header: headers }))
-                        return
-                    case "server-ready":
-                        ws.onmessage = clientReady
-                        ws.send(JSON.stringify({ type: 'client-ready' }))
                         return
                     default:
                         isEnded = true
@@ -192,25 +200,5 @@ export async function requestWS<
                 }
             })
         }
-        // 연결 대기중
-        ws.onmessage = initialize
-        //     // const packet = 
-        //     (async () => {
-        //         const packet = await blobOrBuffer(data.data)
-        //         switch (packet.type) {
-        //             case "need-header":
-        //                 // 헤더 셋업
-        //                 ws.send(JSON.stringify({ type: 'header', header: headers }))
-        //                 return
-        //             case "server-ready":
-        //                 // 헤더 셋업
-        //                 ws.onmessage = ()=>{
-
-        //                 }
-        //                 
-        //                 return
-        //         }
-        //     })();
-        // }
     })
 }
