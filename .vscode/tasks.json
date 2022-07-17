@@ -2,29 +2,11 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "watch:cjs",
-            "type": "npm",
-            "script": "watch:cjs",
-            "problemMatcher": [
-                "$tsc-watch"
-            ],
-            "group": "build"
-        },
-        {
-            "label": "watch:esm",
-            "type": "npm",
-            "script": "watch:esm",
-            "problemMatcher": [
-                "$tsc-watch"
-            ],
-            "group": "build"
-        },
-        {
             "label": "watch",
-            "dependsOrder": "parallel",
-            "dependsOn": [
-                "watch:cjs",
-                "watch:esm",
+            "type": "npm",
+            "script": "watch",
+            "problemMatcher": [
+                "$tsc-watch"
             ],
             "group": {
                 "kind": "build",

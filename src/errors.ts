@@ -11,10 +11,13 @@ export class TimeoutError extends Error {
 export class AbortError extends Error {
     constructor() { super(`abort error`) }
 }
-export class UnexpectedStatus extends Error {
-    status: number
-    constructor(status: number) {
-        super(`unexpected status code, ${status}`)
-        this.status = status
+export class MaxBufferReached extends Error {
+    constructor() { super(`abort error`) }
+}
+export class UnexpectedResponse extends Error {
+    response: Response
+    constructor(response: Response) {
+        super(`unexpected response, status=${response.status}`)
+        this.response = response
     }
 }

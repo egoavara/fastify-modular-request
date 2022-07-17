@@ -1,10 +1,9 @@
 
-import * as Axios from "axios"
-import { Multipart } from "fastify-modular-route"
+import { Multipart } from "@fastify-modular/route"
 import FormData from "form-data"
 import { pito } from "pito"
-import QueryString from "qs"
-import { UnexpectedStatus } from "./errors.js"
+import qs from "qs"
+import { UnexpectedResponse } from "./errors.js"
 import { GenericState } from "./generic-state.js"
 import { MultipartArgs, Requester } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
@@ -24,56 +23,63 @@ export async function requestMultipart(
     args: MultipartArgs<GenericState, any, any, any>,
 
 ): Promise<Result<any, any>> {
-    // setup host
+    // =============================================
+    // 
+    const usingFetch = args.fetch ?? fetch
+    if (usingFetch === undefined) {
+        throw new Error(`no default fetch function, use {fetch : [your custom fetch function]}`)
+    }
+    // =============================================
+    // setup host, path, url, qs
     const host = req.host.resolve(api)
-    // setup path
     const path = req.path.resolve(api.path, api.params, args.params)
+    const url = new URL(`${host}${path}`)
+    url.search = qs.stringify(pito.wrap(api.query, args.query))
+    // =============================================
     // setup formdata
     const form = new FormData()
     for (const [i, v] of args.files.entries()) {
         form.append(`file-${i}`, v.file, { filename: v.name, filepath: v.path, contentType: v.contentType })
     }
+
+    // =============================================
     // setup headers
-    const headers: Record<string, string | number | boolean> = form.getHeaders()
-    jwtBearer(api, args, (token) => { headers['authorization'] = `bearer ${token}` })
-    try {
-        const res = await Axios.default.request({
-            method: 'POST',
-            url: `${host}${path}`,
-            params: pito.wrap(api.query, args.query),
-            paramsSerializer: QueryString.stringify,
-            data: form,
-            headers,
-            ...(args.axios ?? {}),
-        })
-        const contentType = res.headers['content-type'] ?? res.headers['Content-Type'] ?? res.headers['CONTENT-TYPE'] ?? ''
-        if (!contentType.startsWith("application/json")) {
-            throw new Error(`unexpected not json result, ${contentType}, response : ${res}`)
-        }
+    const headers = new Headers(args.option?.headers)
+    for (const [k, v] of Object.entries(form.getHeaders())) {
+        headers.set(k, v)
+    }
+    jwtBearer(api, args, (token) => { headers.set('authorization', `bearer ${token}`) })
+    // =============================================
+    // fetch option
+    const fetchOption: RequestInit = {
+        ...(args.option ?? {}),
+        method: api.method,
+        headers,
+        body: form.getBuffer()
+    }
+    return usingFetch(url, fetchOption).then(async (res) => {
+        await args.onResponse?.(res)
+        const contentType = res.headers.get('content-type') ?? res.headers.get('Content-Type') ?? res.headers.get('CONTENT-TYPE') ?? ''
         if (res.status === 204) {
             return {
                 result: 'ok',
                 value: pito.unwrap(api.response, undefined),
             }
         } else if (res.status === 200) {
+            if (!contentType.startsWith("application/json")) {
+                throw new Error(`unexpected not json result, ${contentType}, response : ${res}`)
+            }
             return {
                 result: 'ok',
-                value: pito.unwrap(api.response, res.data),
+                value: pito.unwrap(api.response, await res.json()),
+            }
+        } else if (res.status === 406) {
+            return {
+                result: 'fail',
+                value: pito.unwrap(api.fail, await res.json()),
             }
         } else {
-            throw new UnexpectedStatus(res.status)
+            throw new UnexpectedResponse(res)
         }
-    } catch (err: any) {
-        const response = err.response as Axios.AxiosResponse | undefined
-        if (response != null) {
-            const contentType = response.headers['content-type'] ?? response.headers['Content-Type'] ?? response.headers['CONTENT-TYPE'] ?? ''
-            if (response.status === 406 && contentType.startsWith('application/json')) {
-                return {
-                    result: 'fail',
-                    value: pito.unwrap(api.fail, response.data),
-                }
-            }
-        }
-        throw err
-    }
+    })
 }

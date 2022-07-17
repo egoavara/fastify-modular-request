@@ -1,5 +1,5 @@
 
-import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "fastify-modular-route"
+import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "@fastify-modular/route"
 import { pito } from "pito"
 import { GenericState } from "./generic-state.js"
 import { KnownPresetSnippet } from "./known-presets.js"
@@ -11,37 +11,35 @@ import { requestSSE, SSEManager } from "./request-sse.js"
 import { requestWS, WSManager } from "./request-ws.js"
 import { PResult, Result } from "./result.js"
 import { BodySnippet, ParamsSnippet, QuerySnippet } from "./utils.js"
-import * as Axios from "axios"
 
 export type HTTPNoBodyArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
-    & { axios?: Axios.AxiosRequestConfig }
-
+    & { fetch?: typeof fetch, option?: Omit<RequestInit, 'body' | 'method'>, onResponse?: (response: Response) => void | Promise<void> }
 export type HTTPBodyArgs<State extends GenericState, Params, Query, Body, Preset> =
     & BodySnippet<Body>
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
-    & { axios?: Axios.AxiosRequestConfig }
+    & { fetch?: typeof fetch, option?: Omit<RequestInit, 'body' | 'method'>, onResponse?: (response: Response) => void | Promise<void> }
 
 export type MultipartArgs<State extends GenericState, Params, Query, Preset> =
     & { files: MultipartFile[] }
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
-    & { axios?: Axios.AxiosRequestConfig }
+    & { fetch?: typeof fetch, option?: Omit<RequestInit, 'body' | 'method'>, onResponse?: (response: Response) => void | Promise<void> }
 
 export type SSEOption = {
-    timeout?: number // ms
-    maxBuffer?: number
+    retry?: number          // ms, retry interval option, if server send retry, client retry interval are ignored
+    maxBuffer?: number      // maximum buffer size for event, if maximum buffer size reached, it throw MaxBufferReached
 }
 export type SSEArgs<State extends GenericState, Params, Query, Preset> =
-    & { sse?: SSEOption }
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
+    & { fetch?: typeof fetch, option?: Omit<RequestInit, 'body' | 'method'> & SSEOption, onResponse?: (response: Response) => void | Promise<void> }
 
 export type WSArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
@@ -69,7 +67,7 @@ export type RequestRet<API extends Route> =
     ? PResult<pito.Type<Response>, pito.Type<Fail>>
     : API extends Multipart<string, string, string, any, any, infer Response, infer Fail>
     ? PResult<pito.Type<Response>, pito.Type<Fail>>
-    : API extends SSE<string, string, string, any, any, infer Packet, infer Fail>
+    : API extends SSE<string, string, string, any, any, infer Packet, infer Event, infer Fail>
     ? Promise<SSEManager<pito.Type<Packet>, pito.Type<Fail>>>
     : API extends WS<string, string, string, any, any, infer Send, infer Recv, infer Request, infer Response, infer Fail>
     // WS은 서버 기준으로 정의하기에 클라이언트는 Recv, Send, Response, Request를 반대 의미로 써야한다.

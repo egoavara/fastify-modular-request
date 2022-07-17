@@ -1,4 +1,4 @@
-import { WS } from "fastify-modular-route"
+import { WS } from "@fastify-modular/route"
 import WebSocket from "isomorphic-ws"
 import { pito } from "pito"
 import QueryString from "qs"

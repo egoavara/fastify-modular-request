@@ -1,4 +1,4 @@
-import { Route } from "fastify-modular-route"
+import { Route } from "@fastify-modular/route"
 
 export class ManagerHost {
     fallback: string

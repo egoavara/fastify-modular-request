@@ -3,6 +3,7 @@
     "src/**/*.ts"
   ],
   "compilerOptions": {
+    "incremental": true,
     "moduleResolution": "Node",
     "target": "ES2022",
     "declaration": true,

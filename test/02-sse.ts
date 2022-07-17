@@ -1,6 +1,6 @@
 import Fastify from "fastify"
 import { FastifyModular } from "fastify-modular"
-import { SSE } from "fastify-modular-route"
+import { SSE } from "@fastify-modular/route"
 import { pito } from "pito"
 import tap from "tap"
 import { Requester } from "../cjs/index.js"
