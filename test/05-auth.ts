@@ -1,11 +1,11 @@
 import Fastify from 'fastify'
-import { failure, FastifyModular } from 'fastify-modular'
-import { HTTPNoBody } from 'fastify-modular-route'
+import { FastifyModular } from 'fastify-modular'
+import { failure, HTTPNoBody } from '@fastify-modular/route'
 import tap from 'tap'
 import { Requester } from "../cjs"
 
 const JWTModule = FastifyModular('jwt-module')
-    .static('jwt-bearer', 'jwtResult', async (_0, _1, { request }) => {
+    .when({ includes: ['jwt-bearer'] }).define('jwtResult', async ({ }, _, { request }) => {
         const auth = request.headers.authorization
         if (auth === undefined) {
             throw failure('no authorization header', 403)
@@ -17,9 +17,8 @@ const JWTModule = FastifyModular('jwt-module')
         return {
             raw: rawToken,
         }
-    })
+    }).end()
     .build()
-    .instance()
 
 // tap.test('unmanaged', async t => {
 //     const PORT = 14000
@@ -38,7 +37,6 @@ const JWTModule = FastifyModular('jwt-module')
 //                     t.same(jwtResult, { raw: EXAMPLE_JWT })
 //                 })
 //                 .build()
-//                 .instance()
 //                 .plugin(),
 //             {
 
@@ -64,18 +62,18 @@ tap.test('managed', async t => {
         // https://jwt.io/
         const EXAMPLE_JWT_INVALID = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
         const EXAMPLE_JWT_VALID = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkphbmUgUm9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.8-PNa_8kYAU1vpJEf1WAYGRLjhcGyTSqSbTsm3HkUMA'
-        t.plan(1)
+        t.plan(2)
         await fastify.register(
             FastifyModular('test')
                 .import(JWTModule).from()
                 .route(route).implements(async ({ fail }, { jwtResult }) => {
                     if (jwtResult.raw === EXAMPLE_JWT_INVALID) {
+                        t.pass()
                         return fail('invalid jwt', 403)
                     }
                     t.same(jwtResult, { raw: EXAMPLE_JWT_VALID })
                 })
                 .build()
-                .instance()
                 .plugin(),
             {
 

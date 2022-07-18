@@ -1,6 +1,7 @@
 
 import { HTTPBody, HTTPNoBody, MethodHTTPBody, MethodHTTPNoBody, Multipart, Route, SSE, WS } from "@fastify-modular/route"
 import { pito } from "pito"
+import { UnexpectedResponse } from "./errors.js"
 import { GenericState } from "./generic-state.js"
 import { KnownPresetSnippet } from "./known-presets.js"
 import { ManagerHost } from "./manager-host.js"
@@ -9,8 +10,11 @@ import { requestHTTPBody, requestHTTPNoBody } from "./request-http.js"
 import { MultipartFile, requestMultipart } from "./request-multipart.js"
 import { requestSSE, SSEManager } from "./request-sse.js"
 import { requestWS, WSManager } from "./request-ws.js"
-import { PResult, Result } from "./result.js"
+import { PResult } from "./result.js"
+import { SSEControllerInit } from "./sse/index.js"
 import { BodySnippet, ParamsSnippet, QuerySnippet } from "./utils.js"
+
+export * from './errors.js'
 
 export type HTTPNoBodyArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
@@ -39,7 +43,7 @@ export type SSEArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
     & QuerySnippet<Query>
     & KnownPresetSnippet<Preset, State>
-    & { fetch?: typeof fetch, option?: Omit<RequestInit, 'body' | 'method'> & SSEOption, onResponse?: (response: Response) => void | Promise<void> }
+    & { fetcher?: SSEControllerInit }
 
 export type WSArgs<State extends GenericState, Params, Query, Preset> =
     & ParamsSnippet<Params>
@@ -68,7 +72,7 @@ export type RequestRet<API extends Route> =
     : API extends Multipart<string, string, string, any, any, infer Response, infer Fail>
     ? PResult<pito.Type<Response>, pito.Type<Fail>>
     : API extends SSE<string, string, string, any, any, infer Packet, infer Event, infer Fail>
-    ? Promise<SSEManager<pito.Type<Packet>, pito.Type<Fail>>>
+    ? SSEManager<pito.Type<Packet>, { [_ in keyof Event]: pito.Type<Event[_]> }, pito.Type<Fail>>
     : API extends WS<string, string, string, any, any, infer Send, infer Recv, infer Request, infer Response, infer Fail>
     // WS은 서버 기준으로 정의하기에 클라이언트는 Recv, Send, Response, Request를 반대 의미로 써야한다.
     ? Promise<WSManager<pito.Type<Recv>, pito.Type<Send>, Response, Request, pito.Type<Fail>>>
@@ -112,7 +116,7 @@ export class Requester {
             case 'MULTIPART':
                 return PResult(requestMultipart(this, api, others as any)) as any
             case 'SSE':
-                return requestSSE(this, api, others as any) as any
+                return requestSSE(this, api, others as any, {}) as any
             case 'WS':
                 return requestWS(this, api, others as any) as any
             default:
@@ -153,10 +157,11 @@ export class JWTManagedRequester {
                     try {
                         return await requestHTTPNoBody(this.req, api, others as any)
                     } catch (err) {
-                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
+                        if (err instanceof UnexpectedResponse && err.response.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
+                            return await requestHTTPNoBody(this.req, api, others as any)
                         }
-                        return await requestHTTPNoBody(this.req, api, others as any)
+                        throw err
                     }
                 })()) as any
             case 'POST':
@@ -170,10 +175,11 @@ export class JWTManagedRequester {
                     try {
                         return await requestHTTPBody(this.req, api, others as any)
                     } catch (err) {
-                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
+                        if (err instanceof UnexpectedResponse && err.response.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
+                            return await requestHTTPBody(this.req, api, others as any)
                         }
-                        return await requestHTTPBody(this.req, api, others as any)
+                        throw err
                     }
                 })()) as any
             case 'MULTIPART':
@@ -184,40 +190,34 @@ export class JWTManagedRequester {
                     try {
                         return await requestMultipart(this.req, api, others as any)
                     } catch (err) {
-                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
+                        if (err instanceof UnexpectedResponse && err.response.status === 403) {
                             others['auth'] = await this.onTokenExpired(this.req)
+                            return await requestMultipart(this.req, api, others as any)
                         }
-                        return await requestMultipart(this.req, api, others as any)
+                        throw err
                     }
                 })()) as any
             case 'SSE':
-
                 return (async () => {
+                    const req = this.req
+                    const onTokenExpired = this.onTokenExpired
                     if (api.presets.includes('jwt-bearer')) {
                         others['auth'] = await this.onTokenNeed(this.req)
                     }
-                    try {
-                        return await requestSSE(this.req, api, others as any) as any
-                    } catch (err) {
-                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
-                            others['auth'] = await this.onTokenExpired(this.req)
+                    return await requestSSE(this.req, api, others as any, {
+                        onOpenFail: async function (response) {
+                            if (response?.status === 403) {
+                                this.init.headers.set('auth', await onTokenExpired(req))
+                            }
                         }
-                        return await requestSSE(this.req, api, others as any)
-                    }
+                    }) as any
                 })() as any
             case 'WS':
                 return (async () => {
                     if (api.presets.includes('jwt-bearer')) {
                         others['auth'] = await this.onTokenNeed(this.req)
                     }
-                    try {
-                        return await requestWS(this.req, api, others as any) as any
-                    } catch (err) {
-                        if (err instanceof Axios.AxiosError && err.response?.status === 403) {
-                            others['auth'] = await this.onTokenExpired(this.req)
-                        }
-                        return await requestWS(this.req, api, others as any)
-                    }
+                    return await requestWS(this.req, api, others as any) as any
                 })() as any
             default:
                 // @ts-ignore

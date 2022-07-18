@@ -82,6 +82,7 @@ export async function requestHTTPBody(
     // =============================================
     // setup headers
     const headers = new Headers(args.option?.headers)
+    headers.set('content-type', 'application/json')
     jwtBearer(api, args, (token) => { headers.set('authorization', `bearer ${token}`) })
     // =============================================
     // fetch option
@@ -89,7 +90,7 @@ export async function requestHTTPBody(
         ...(args.option ?? {}),
         method: api.method,
         headers,
-        body : JSON.stringify(pito.wrap(api.body, args.body))
+        body: JSON.stringify(pito.wrap(api.body, args.body))
     }
     return usingFetch(url, fetchOption).then(async (res) => {
         await args.onResponse?.(res)

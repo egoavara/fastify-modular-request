@@ -21,3 +21,20 @@ export class UnexpectedResponse extends Error {
         this.response = response
     }
 }
+export class MaximumRetryReached extends Error {
+    max: number
+    constructor(max: number) {
+        super(`maximum retry ${max}`)
+        this.max = max
+    }
+}
+export class NoFetchAPI extends Error {
+    constructor() {
+        super(`there is no fetch api`)
+    }
+}
+export class AlreadyFetched extends Error {
+    constructor() {
+        super(`already .fetch called`)
+    }
+}

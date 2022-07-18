@@ -1,6 +1,6 @@
+import { WS } from "@fastify-modular/route"
 import Fastify from "fastify"
 import { FastifyModular } from "fastify-modular"
-import { SSE, WS } from "@fastify-modular/route"
 import { pito } from "pito"
 import tap from "tap"
 import { Requester } from "../cjs/index.js"
@@ -28,10 +28,10 @@ tap.test('ws', async t => {
                 .route(route).implements(async ({ manager }) => {
                     manager.onResponse('greet-server', async (name) => `hello, ${name}, i am server`)
                     manager.onReceive(async (data) => { manager.send({ pong: data.ping }) })
+                    await manager.ready()
                     await manager.until()
                 })
                 .build()
-                .instance()
                 .plugin(),
             {
 
@@ -48,18 +48,17 @@ tap.test('ws', async t => {
                 for (const [i, v] of pongs.sort((a, b) => a - b).entries()) {
                     t.same(i, v)
                 }
-                conn.close()
             }
         })
         conn.onResponse('greet-client', async (name) => {
             return `hello, ${name}, i am client`
         })
+        await conn.ready()
         for (let i = 0; i < PING_COUNT; i++) {
             conn.send({ ping: i })
         }
-
         t.same(await conn.request('greet-server', 'client'), `hello, client, i am server`)
-        await conn.until()
+        conn.close()
     } catch (err) {
         t.fail(`${err}`)
     } finally {

@@ -7,6 +7,8 @@
     "moduleResolution": "Node",
     "target": "ES2022",
     "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "removeComments": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

@@ -1,15 +1,15 @@
 import Fastify from 'fastify'
 import { FastifyModular } from 'fastify-modular'
-import { HTTPBody, HTTPNoBody, InferHTTPBody } from 'fastify-modular-route'
+import { HTTPBody, HTTPNoBody } from '@fastify-modular/route'
 import { pito } from 'pito'
 import tap from 'tap'
-import { Requester } from "../cjs"
+import { Requester, UnexpectedResponse } from "../cjs"
 
 tap.test('no-body', async t => {
     const PORT = 10000
     const route = HTTPNoBody("GET", "/:result")
         .params(pito.Obj({
-            result: pito.ULit('ok', 'fail')
+            result: pito.Ulit('ok', 'fail')
         }))
         .query(pito.Obj({
             value: pito.Str()
@@ -21,7 +21,9 @@ tap.test('no-body', async t => {
             cause: pito.Str(),
         }))
         .build()
-    const fastify = Fastify()
+    const fastify = Fastify({
+        ajv:{customOptions:{strict : false}}
+    })
 
     await fastify.register(
         FastifyModular('test')
@@ -34,7 +36,6 @@ tap.test('no-body', async t => {
                 }
             })
             .build()
-            .instance()
             .plugin(),
         {
 
@@ -77,7 +78,7 @@ tap.test('body', async t => {
     const PORT = 10001
     const route = HTTPBody("POST", "/:result")
         .params(pito.Obj({
-            result: pito.ULit('ok', 'fail'),
+            result: pito.Ulit('ok', 'fail'),
         }))
         .body(pito.Obj({
             value: pito.Str()
@@ -89,7 +90,9 @@ tap.test('body', async t => {
             finner: pito.Str(),
         }))
         .build()
-    const fastify = Fastify()
+    const fastify = Fastify({
+        ajv:{customOptions:{strict : false}}
+    })
 
     await fastify.register(
         FastifyModular('test')
@@ -104,7 +107,6 @@ tap.test('body', async t => {
                 }
             })
             .build()
-            .instance()
             .plugin(),
         {
 

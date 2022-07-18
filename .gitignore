@@ -1,14 +1,22 @@
+# npm package
 node_modules
 
+# typescript compiler
 cjs/**/*.d.ts.map
 cjs/**/*.d.ts
 cjs/**/*.js.map
 cjs/**/*.js
+cjs/**/*.tsbuildinfo
 
 esm/**/*.d.ts.map
 esm/**/*.d.ts
 esm/**/*.js.map
 esm/**/*.js
+esm/**/*.tsbuildinfo
+
+types/**/*.d.ts.map
+types/**/*.d.ts
+types/**/*.tsbuildinfo
 
 .nyc_output
 
