@@ -2,11 +2,13 @@ import { WS } from "@fastify-modular/route"
 import { pito } from "pito"
 import QueryString from "qs"
 import { v4 } from "uuid"
-import { IMessageEvent, w3cwebsocket } from "websocket"
+import type { IMessageEvent } from "websocket"
+import websocket from "websocket"
 import { GenericState } from "./generic-state.js"
-import { RequestArgs, Requester, AbortError } from "./index.js"
+import { AbortError, RequestArgs, Requester } from "./index.js"
 import { jwtBearer } from "./known-presets.js"
-
+// commonjs module error
+const { w3cwebsocket } = websocket
 export type WSManager<Send, Recv, Request extends Record<string, { args: [pito] | [...pito[]], return: pito }>, Response extends Record<string, { args: [pito] | [...pito[]], return: pito }>, Fail> = {
     socket: any,
     send(data: Send): void,
