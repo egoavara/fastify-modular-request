@@ -90,7 +90,7 @@ export async function requestHTTPBody(
         ...(args.option ?? {}),
         method: api.method,
         headers,
-        body: JSON.stringify(pito.wrap(api.body, args.body))
+        body: args.body === undefined ? 'null' : JSON.stringify(pito.wrap(api.body, args.body))
     }
     return usingFetch(url, fetchOption).then(async (res) => {
         await args.onResponse?.(res)

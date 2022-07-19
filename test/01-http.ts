@@ -1,9 +1,9 @@
+import { HTTPBody, HTTPNoBody } from '@fastify-modular/route'
 import Fastify from 'fastify'
 import { FastifyModular } from 'fastify-modular'
-import { HTTPBody, HTTPNoBody } from '@fastify-modular/route'
 import { pito } from 'pito'
 import tap from 'tap'
-import { Requester, UnexpectedResponse } from "../cjs"
+import { Requester } from "../cjs"
 
 tap.test('no-body', async t => {
     const PORT = 10000
@@ -22,9 +22,8 @@ tap.test('no-body', async t => {
         }))
         .build()
     const fastify = Fastify({
-        ajv:{customOptions:{strict : false}}
+        ajv: { customOptions: { strict: false } }
     })
-
     await fastify.register(
         FastifyModular('test')
             .route(route).implements(async ({ params, query, fail }) => {
@@ -41,7 +40,7 @@ tap.test('no-body', async t => {
 
         }
     )
-    await fastify.listen(PORT, '::')
+    await fastify.listen({ port: PORT })
     await new Promise(resolve => setTimeout(resolve, 1000))
     const req = Requester.create(`http://localhost:${PORT}`)
     {
@@ -91,7 +90,7 @@ tap.test('body', async t => {
         }))
         .build()
     const fastify = Fastify({
-        ajv:{customOptions:{strict : false}}
+        ajv: { customOptions: { strict: false } }
     })
 
     await fastify.register(
@@ -134,5 +133,27 @@ tap.test('body', async t => {
     }).catch(err => {
         t.fail(`unexpected error ${err}`)
     })
+    await fastify.close()
+})
+tap.test('body null', async t => {
+    const PORT = 10002
+    const route = HTTPBody("POST", "/").build()
+    const fastify = Fastify({
+        ajv: { customOptions: { strict: false } }
+    })
+
+    await fastify.register(
+        FastifyModular('test')
+            .route(route).implements(async ({ body }) => {
+                t.same(body, null)
+                return null
+            })
+            .build()
+            .plugin(),
+        {}
+    )
+    await fastify.listen({ port: PORT })
+    const req = Requester.create(`http://localhost:${PORT}`)
+    t.same(await req.request(route, {}).ok(), null)
     await fastify.close()
 })
