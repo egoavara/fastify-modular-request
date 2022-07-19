@@ -1,6 +1,6 @@
 import EventEmitter from "events"
 import { ReadableStreamDefaultReadResult } from "stream/web"
-import { AlreadyFetched, MaximumRetryReached, NoFetchAPI, UnexpectedResponse } from "../errors"
+import { AlreadyFetched, MaximumRetryReached, NoFetchAPI, UnexpectedResponse } from "../errors.js"
 // 
 const NewLine = 10, CarriageReturn = 13, Space = 32, Colon = 58
 const DEFAULT_MAX_RETRY = 10

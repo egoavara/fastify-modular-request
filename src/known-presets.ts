@@ -1,5 +1,5 @@
 import { Route } from "@fastify-modular/route"
-import { GenericState } from "./generic-state"
+import { GenericState } from "./generic-state.js"
 
 
 
