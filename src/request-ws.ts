@@ -76,7 +76,6 @@ export async function requestWS<
             isEnded = true
             reject(ev)
         }
-        ws.addEventListener('')
         // 연결 대기중
         ws.onmessage = (data: WebSocket.MessageEvent) => {
             blobOrBuffer(data.data).then(async (packet: any) => {
