@@ -1,4 +1,4 @@
-import { pito } from "pito"
+import { pito, PitoObj } from "pito"
 
 export class ManagerPath{
     
@@ -7,7 +7,7 @@ export class ManagerPath{
     static create(){
         return new ManagerPath()
     }
-    resolve(path: string, paramsDef: pito.Obj<Record<string, pito>>, params: Record<string, any>): string {
+    resolve(path: string, paramsDef: PitoObj<Record<string, pito>>, params: Record<string, any>): string {
         let result = path
         for (const [k, v] of Object.entries(paramsDef.properties)) {
             if (!(k in params)) {
