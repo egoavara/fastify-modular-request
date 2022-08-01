@@ -62,6 +62,7 @@
     "ws": "^8.8.0"
   },
   "peerDependencies": {
+    "pito": "^0.3.3",
     "fastify-modular-route": "^0.6.7"
   }
 }
